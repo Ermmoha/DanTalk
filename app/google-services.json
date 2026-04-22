@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "10238071340",
+    "project_id": "dantalk-5d450",
+    "storage_bucket": "dantalk-5d450.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:10238071340:android:6d49214c86980a64317789",
+        "android_client_info": {
+          "package_name": "com.example.dantalk"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAcD2h3R4nSX2d0N78hKIoTExOqdrr1CeA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
