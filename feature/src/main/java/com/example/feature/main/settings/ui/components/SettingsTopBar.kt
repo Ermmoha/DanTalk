@@ -21,7 +21,7 @@ import com.example.core.design.theme.DanTalkTheme
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsTopBar(
-    title: String = "Settings",
+    title: String = "Настройки",
     navigateBack: () -> Unit
 ) {
     CenterAlignedTopAppBar(

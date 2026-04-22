@@ -127,7 +127,7 @@ fun Message(
                 ) {
                     if (!message.isPhoto) {
                         DropdownMenuItem(
-                            text = { Text(text = "Edit") },
+                            text = { Text(text = "Изменить") },
                             leadingIcon = {
                                 Icon(
                                     imageVector = Icons.Outlined.Edit,
@@ -141,7 +141,7 @@ fun Message(
                         )
                     }
                     DropdownMenuItem(
-                        text = { Text(text = "Delete") },
+                        text = { Text(text = "Удалить") },
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Outlined.Delete,
@@ -162,7 +162,7 @@ fun Message(
             ) {
                 if (message.isEdited) {
                     Text(
-                        text = "edited",
+                        text = "изменено",
                         color = DanTalkTheme.colors.hint,
                         fontSize = 10.sp
                     )

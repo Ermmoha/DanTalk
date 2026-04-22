@@ -41,6 +41,7 @@ dependencies {
     implementation(libs.work.runtime.ktx)
 
     implementation(libs.firebase.firestore)
+    implementation(libs.firebase.messaging)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)

@@ -12,6 +12,9 @@ import com.example.background.R
 
 const val IMAGE_LOAD_CHANNEL_ID = "image_load_channel"
 private const val MESSAGE_CHANNEL_ID = "message_channel"
+private const val MESSAGE_SILENT_CHANNEL_ID = "message_silent_channel"
+private const val MESSAGE_VIBRATE_ONLY_CHANNEL_ID = "message_vibrate_only_channel"
+private const val MESSAGE_SOUND_ONLY_CHANNEL_ID = "message_sound_only_channel"
 
 fun createNotificationChannel(context: Context) {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -23,19 +26,48 @@ fun createNotificationChannel(context: Context) {
             description = "Notifications for media uploads and downloads"
         }
 
-        val messageChannel = NotificationChannel(
-            MESSAGE_CHANNEL_ID,
-            "Messages",
-            NotificationManager.IMPORTANCE_HIGH
-        ).apply {
-            description = "Notifications for incoming messages"
-        }
-
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.createNotificationChannel(imageChannel)
-        manager.createNotificationChannel(messageChannel)
+        listOf(
+            createMessageChannel(MESSAGE_CHANNEL_ID, "Messages", sound = true, vibrate = true),
+            createMessageChannel(
+                MESSAGE_VIBRATE_ONLY_CHANNEL_ID,
+                "Messages vibration",
+                sound = false,
+                vibrate = true
+            ),
+            createMessageChannel(
+                MESSAGE_SOUND_ONLY_CHANNEL_ID,
+                "Messages sound",
+                sound = true,
+                vibrate = false
+            ),
+            createMessageChannel(
+                MESSAGE_SILENT_CHANNEL_ID,
+                "Messages silent",
+                sound = false,
+                vibrate = false
+            )
+        ).forEach(manager::createNotificationChannel)
     }
 }
+
+@androidx.annotation.RequiresApi(Build.VERSION_CODES.O)
+private fun createMessageChannel(
+    id: String,
+    name: String,
+    sound: Boolean,
+    vibrate: Boolean
+): NotificationChannel =
+    NotificationChannel(
+        id,
+        name,
+        NotificationManager.IMPORTANCE_HIGH
+    ).apply {
+        description = "Notifications for incoming messages"
+        enableVibration(vibrate)
+        if (!sound) setSound(null, null)
+    }
 
 fun createNotification(
     context: Context,
@@ -63,7 +95,9 @@ fun showIncomingMessageNotification(
     context: Context,
     notificationId: Int,
     title: String,
-    body: String
+    body: String,
+    soundEnabled: Boolean = true,
+    vibrationEnabled: Boolean = true
 ) {
     createNotificationChannel(context)
 
@@ -76,17 +110,39 @@ fun showIncomingMessageNotification(
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
     )
 
-    val notification = NotificationCompat.Builder(context, MESSAGE_CHANNEL_ID)
+    val notification = NotificationCompat.Builder(
+        context,
+        resolveMessageChannelId(soundEnabled, vibrationEnabled)
+    )
         .setSmallIcon(R.drawable.download)
         .setContentTitle(title)
         .setContentText(body)
         .setStyle(NotificationCompat.BigTextStyle().bigText(body))
         .setPriority(NotificationCompat.PRIORITY_HIGH)
+        .setDefaults(resolveNotificationDefaults(soundEnabled, vibrationEnabled))
         .setAutoCancel(true)
         .setContentIntent(pendingIntent)
+        .apply {
+            if (!vibrationEnabled) setVibrate(longArrayOf(0L))
+        }
         .build()
 
     runCatching {
         NotificationManagerCompat.from(context).notify(notificationId, notification)
     }
+}
+
+private fun resolveMessageChannelId(soundEnabled: Boolean, vibrationEnabled: Boolean): String =
+    when {
+        soundEnabled && vibrationEnabled -> MESSAGE_CHANNEL_ID
+        soundEnabled -> MESSAGE_SOUND_ONLY_CHANNEL_ID
+        vibrationEnabled -> MESSAGE_VIBRATE_ONLY_CHANNEL_ID
+        else -> MESSAGE_SILENT_CHANNEL_ID
+    }
+
+private fun resolveNotificationDefaults(soundEnabled: Boolean, vibrationEnabled: Boolean): Int {
+    var defaults = 0
+    if (soundEnabled) defaults = defaults or NotificationCompat.DEFAULT_SOUND
+    if (vibrationEnabled) defaults = defaults or NotificationCompat.DEFAULT_VIBRATE
+    return defaults
 }

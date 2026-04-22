@@ -12,6 +12,9 @@ interface SettingsStore : Store<Intent, State, Label> {
     sealed interface Intent {
         class ChangeTheme(val theme: AppTheme) : Intent
         class SetNotificationsEnabled(val enabled: Boolean) : Intent
+        class SetNotificationPreviewsEnabled(val enabled: Boolean) : Intent
+        class SetNotificationSoundEnabled(val enabled: Boolean) : Intent
+        class SetNotificationVibrationEnabled(val enabled: Boolean) : Intent
         data object NavigateToHelp : Intent
         data object NavigateBack : Intent
     }
@@ -19,7 +22,10 @@ interface SettingsStore : Store<Intent, State, Label> {
     data class State(
         val user: UiUserData = UiUserData(),
         val selectedTheme: AppTheme = AppTheme.SYSTEM,
-        val notificationsEnabled: Boolean = true
+        val notificationsEnabled: Boolean = true,
+        val notificationPreviewsEnabled: Boolean = true,
+        val notificationSoundEnabled: Boolean = true,
+        val notificationVibrationEnabled: Boolean = true
     )
 
     sealed interface Label {

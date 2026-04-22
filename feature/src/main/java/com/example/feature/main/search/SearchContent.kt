@@ -1,14 +1,25 @@
 package com.example.feature.main.search
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Chat
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -16,7 +27,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.core.design.theme.DanTalkTheme
@@ -65,46 +78,141 @@ private fun Content(
         ) {
             LazyColumn(
                 modifier = Modifier
-                    .padding(top = 8.dp)
+                    .fillMaxSize()
+                    .padding(top = 10.dp)
                     .imePadding()
             ) {
                 item {
-                    Spacer(Modifier.height(16.dp))
-                    Column(
-                        modifier = Modifier.padding(horizontal = 16.dp)
-                    ) {
-                        Text(
-                            text = "Чаты",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = DanTalkTheme.colors.oppositeTheme
-                        )
-                        if (state.chatsByQuery.isEmpty() &&  !state.isLoading)
-                            Text(
-                                text = when {
-                                    state.query.isNotEmpty() -> "Ничего не найдено"
-                                    else -> "Найдите чаты по username"
-                                },
-                                color = DanTalkTheme.colors.hint
-                            )
-                    }
-                    Spacer(Modifier.height(6.dp))
+                    SearchHeader(
+                        count = state.chatsByQuery.size,
+                        query = state.query,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                    )
                 }
-                if (state.isLoading)
-                    items(10) { ItemShimmer() }
-                else
-                    items(state.chatsByQuery) { chat ->
+
+                when {
+                    state.isLoading -> items(10) { ItemShimmer() }
+
+                    state.chatsByQuery.isEmpty() -> item {
+                        EmptyChatsContent(
+                            title = if (state.query.isEmpty()) {
+                                "Искать чаты"
+                            } else {
+                                "Ничего не найдено"
+                            },
+                            subtitle = if (state.query.isEmpty()) {
+                                "Введите имя пользователя для того, чтобы найти чат"
+                            } else {
+                                "Попробуйте ввести другое имя пользователя"
+                            }
+                        )
+                    }
+
+                    else -> items(state.chatsByQuery) { chat ->
                         ChatItem(
                             onChatClick = { onIntent(SearchStore.Intent.OpenChat(chat.id)) },
                             chat = chat
                         )
                     }
+                }
             }
-            if (connectionState !is ConnectionState.Available)
+            if (connectionState !is ConnectionState.Available) {
                 NoInternetConnection(
                     connectionState = connectionState,
                     modifier = Modifier.align(Alignment.BottomEnd)
                 )
+            }
         }
+    }
+}
+
+@Composable
+private fun SearchHeader(
+    count: Int,
+    query: String,
+    modifier: Modifier = Modifier
+) {
+    Column {
+        Row(
+            modifier = modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(DanTalkTheme.colors.altSingleTheme)
+                .padding(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Chat,
+                contentDescription = null,
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(CircleShape)
+                    .background(DanTalkTheme.colors.singleTheme)
+                    .padding(7.dp),
+                tint = DanTalkTheme.colors.main
+            )
+            Column(
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text(
+                    text = "Чаты",
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = DanTalkTheme.colors.oppositeTheme
+                )
+                Text(
+                    text = when {
+                        query.isBlank() -> "Поиск по имени пользователя"
+                        count == 1 -> "Найден 1 чат"
+                        count in 2..4 -> "Найдено $count чата"
+                        else -> "Найдено $count чатов"
+                    },
+                    fontSize = 13.sp,
+                    color = DanTalkTheme.colors.hint
+                )
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+    }
+}
+
+@Composable
+private fun EmptyChatsContent(
+    title: String,
+    subtitle: String
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 32.dp, vertical = 88.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.Search,
+            contentDescription = null,
+            modifier = Modifier
+                .size(54.dp)
+                .clip(CircleShape)
+                .background(DanTalkTheme.colors.altSingleTheme)
+                .padding(12.dp),
+            tint = DanTalkTheme.colors.main
+        )
+        Spacer(Modifier.height(12.dp))
+        Text(
+            text = title,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.Center,
+            color = DanTalkTheme.colors.oppositeTheme
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = subtitle,
+            fontSize = 14.sp,
+            textAlign = TextAlign.Center,
+            color = DanTalkTheme.colors.hint
+        )
     }
 }

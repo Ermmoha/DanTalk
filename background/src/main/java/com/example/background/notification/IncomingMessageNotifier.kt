@@ -33,18 +33,28 @@ class IncomingMessageNotifier(
                 userDataStoreRepository.getUserData
                     .map { it.id }
                     .distinctUntilChanged(),
-                appSettingsRepository.notificationsEnabledFlow.distinctUntilChanged()
-            ) { userId, enabled ->
-                userId to enabled
-            }.collect { (userId, enabled) ->
+                appSettingsRepository.notificationsEnabledFlow.distinctUntilChanged(),
+                appSettingsRepository.notificationPreviewsEnabledFlow.distinctUntilChanged(),
+                appSettingsRepository.notificationSoundEnabledFlow.distinctUntilChanged(),
+                appSettingsRepository.notificationVibrationEnabledFlow.distinctUntilChanged()
+            ) { userId, enabled, previewsEnabled, soundEnabled, vibrationEnabled ->
+                MessageNotificationSettings(
+                    userId = userId,
+                    enabled = enabled,
+                    previewsEnabled = previewsEnabled,
+                    soundEnabled = soundEnabled,
+                    vibrationEnabled = vibrationEnabled
+                )
+            }.collect { settings ->
                 clearListeners()
-                if (userId.isBlank() || !enabled) return@collect
-                observeChats(scope, userId)
+                if (settings.userId.isBlank() || !settings.enabled) return@collect
+                observeChats(scope, settings)
             }
         }
     }
 
-    private fun observeChats(scope: CoroutineScope, currentUserId: String) {
+    private fun observeChats(scope: CoroutineScope, settings: MessageNotificationSettings) {
+        val currentUserId = settings.userId
         val currentUserRef = firestore.collection("users").document(currentUserId)
 
         chatsListener = firestore.collection("chats")
@@ -75,7 +85,8 @@ class IncomingMessageNotifier(
                     observeLastMessage(
                         chatId = chatDoc.id,
                         currentUserId = currentUserId,
-                        partnerId = partnerId
+                        partnerId = partnerId,
+                        settings = settings
                     )
                 }
             }
@@ -99,7 +110,8 @@ class IncomingMessageNotifier(
     private fun observeLastMessage(
         chatId: String,
         currentUserId: String,
-        partnerId: String?
+        partnerId: String?,
+        settings: MessageNotificationSettings
     ) {
         val listener = firestore.collection("chats")
             .document(chatId)
@@ -123,7 +135,9 @@ class IncomingMessageNotifier(
                 if (senderId == currentUserId) return@addSnapshotListener
 
                 val isPhoto = messageDoc.getBoolean("photo") ?: false
-                val body = if (isPhoto) {
+                val body = if (!settings.previewsEnabled) {
+                    "Open DanTalk to view this message"
+                } else if (isPhoto) {
                     "Sent a photo"
                 } else {
                     messageDoc.getString("message").orEmpty().ifBlank { "New message" }
@@ -134,7 +148,9 @@ class IncomingMessageNotifier(
                     context = context,
                     notificationId = (chatId + messageId).hashCode(),
                     title = title,
-                    body = body
+                    body = body,
+                    soundEnabled = settings.soundEnabled,
+                    vibrationEnabled = settings.vibrationEnabled
                 )
             }
 
@@ -150,4 +166,12 @@ class IncomingMessageNotifier(
         lastMessageByChat.clear()
         initializedChats.clear()
     }
+
+    private data class MessageNotificationSettings(
+        val userId: String,
+        val enabled: Boolean,
+        val previewsEnabled: Boolean,
+        val soundEnabled: Boolean,
+        val vibrationEnabled: Boolean
+    )
 }

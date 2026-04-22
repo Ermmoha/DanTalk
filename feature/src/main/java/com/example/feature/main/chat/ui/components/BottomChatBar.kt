@@ -58,7 +58,7 @@ fun BottomChatBar(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "Editing message",
+                    text = "Редактирование сообщения",
                     fontSize = 12.sp,
                     color = DanTalkTheme.colors.main
                 )
@@ -99,7 +99,7 @@ fun BottomChatBar(
                     ) {
                         if (message.isEmpty()) {
                             Text(
-                                text = "Message",
+                                text = "Сообщение",
                                 fontSize = 16.sp,
                                 color = DanTalkTheme.colors.hint
                             )

@@ -17,6 +17,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.Vibration
+import androidx.compose.material.icons.outlined.VolumeUp
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -49,7 +52,7 @@ fun SettingsContent(
     Scaffold(
         topBar = {
             SettingsTopBar(
-                title = "Settings",
+                title = "Настройки",
                 navigateBack = { component.onIntent(SettingsStore.Intent.NavigateBack) }
             )
         },
@@ -74,16 +77,32 @@ fun SettingsContent(
             item {
                 NotificationCard(
                     enabled = state.notificationsEnabled,
+                    previewsEnabled = state.notificationPreviewsEnabled,
+                    soundEnabled = state.notificationSoundEnabled,
+                    vibrationEnabled = state.notificationVibrationEnabled,
                     onEnabledChange = {
                         component.onIntent(SettingsStore.Intent.SetNotificationsEnabled(it))
+                    },
+                    onPreviewsEnabledChange = {
+                        component.onIntent(
+                            SettingsStore.Intent.SetNotificationPreviewsEnabled(it)
+                        )
+                    },
+                    onSoundEnabledChange = {
+                        component.onIntent(SettingsStore.Intent.SetNotificationSoundEnabled(it))
+                    },
+                    onVibrationEnabledChange = {
+                        component.onIntent(
+                            SettingsStore.Intent.SetNotificationVibrationEnabled(it)
+                        )
                     }
                 )
             }
             item {
                 ActionCard(
                     icon = Icons.Outlined.Info,
-                    title = "Help",
-                    description = "Open app help and usage tips",
+                    title = "Помощь",
+                    description = "Открыть справку для помощи",
                     onClick = { component.onIntent(SettingsStore.Intent.NavigateToHelp) }
                 )
             }
@@ -141,9 +160,9 @@ private fun ThemeCard(
     onThemeChange: (AppTheme) -> Unit
 ) {
     val items = listOf(
-        AppTheme.SYSTEM to "System",
-        AppTheme.LIGHT to "Light",
-        AppTheme.DARK to "Dark"
+        AppTheme.SYSTEM to "Системная",
+        AppTheme.LIGHT to "Светлая",
+        AppTheme.DARK to "Темная"
     )
 
     Card(
@@ -166,7 +185,7 @@ private fun ThemeCard(
                     tint = DanTalkTheme.colors.main
                 )
                 Text(
-                    text = "Theme",
+                    text = "Тема",
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = DanTalkTheme.colors.oppositeTheme
@@ -199,7 +218,13 @@ private fun ThemeCard(
 @Composable
 private fun NotificationCard(
     enabled: Boolean,
-    onEnabledChange: (Boolean) -> Unit
+    previewsEnabled: Boolean,
+    soundEnabled: Boolean,
+    vibrationEnabled: Boolean,
+    onEnabledChange: (Boolean) -> Unit,
+    onPreviewsEnabledChange: (Boolean) -> Unit,
+    onSoundEnabledChange: (Boolean) -> Unit,
+    onVibrationEnabledChange: (Boolean) -> Unit
 ) {
     Card(
         shape = RoundedCornerShape(16.dp),
@@ -207,40 +232,87 @@ private fun NotificationCard(
             containerColor = DanTalkTheme.colors.altSingleTheme
         )
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Notifications,
-                    contentDescription = null,
-                    tint = DanTalkTheme.colors.main
-                )
-                Column {
-                    Text(
-                        text = "Message notifications",
-                        color = DanTalkTheme.colors.oppositeTheme,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Text(
-                        text = "Receive notifications for new incoming messages",
-                        color = DanTalkTheme.colors.hint,
-                        fontSize = 12.sp
-                    )
-                }
-            }
-            Switch(
+            SettingSwitchRow(
+                icon = Icons.Outlined.Notifications,
+                title = "Уведомления о сообщениях",
+                description = "Получать уведомления о новых сообщениях",
                 checked = enabled,
                 onCheckedChange = onEnabledChange
             )
+            HorizontalDivider(color = DanTalkTheme.colors.spacer)
+            SettingSwitchRow(
+                icon = Icons.Outlined.Visibility,
+                title = "Содержимое сообщений",
+                description = "Показывать содержимое сообщений в уведомлениях",
+                checked = previewsEnabled,
+                enabled = enabled,
+                onCheckedChange = onPreviewsEnabledChange
+            )
+            SettingSwitchRow(
+                icon = Icons.Outlined.VolumeUp,
+                title = "Звук уведомлений",
+                description = "Звук при получении уведомлений",
+                checked = soundEnabled,
+                enabled = enabled,
+                onCheckedChange = onSoundEnabledChange
+            )
+            SettingSwitchRow(
+                icon = Icons.Outlined.Vibration,
+                title = "Вибрация",
+                description = "Вибрация при получении уведомлений",
+                checked = vibrationEnabled,
+                enabled = enabled,
+                onCheckedChange = onVibrationEnabledChange
+            )
         }
+    }
+}
+
+@Composable
+private fun SettingSwitchRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    description: String,
+    checked: Boolean,
+    enabled: Boolean = true,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled) { onCheckedChange(!checked) },
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = if (enabled) DanTalkTheme.colors.main else DanTalkTheme.colors.hint
+        )
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(
+                text = title,
+                color = DanTalkTheme.colors.oppositeTheme,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = description,
+                color = DanTalkTheme.colors.hint,
+                fontSize = 12.sp
+            )
+        }
+        Switch(
+            checked = checked,
+            enabled = enabled,
+            onCheckedChange = onCheckedChange
+        )
     }
 }
 

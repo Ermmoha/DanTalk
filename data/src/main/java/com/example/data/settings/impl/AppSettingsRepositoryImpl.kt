@@ -20,6 +20,12 @@ class AppSettingsRepositoryImpl(
         private val Context.dataStore by preferencesDataStore("app_settings")
 
         private val NOTIFICATIONS_ENABLED_KEY = booleanPreferencesKey("notifications_enabled")
+        private val NOTIFICATION_PREVIEWS_ENABLED_KEY =
+            booleanPreferencesKey("notification_previews_enabled")
+        private val NOTIFICATION_SOUND_ENABLED_KEY =
+            booleanPreferencesKey("notification_sound_enabled")
+        private val NOTIFICATION_VIBRATION_ENABLED_KEY =
+            booleanPreferencesKey("notification_vibration_enabled")
         private val PINNED_CHATS_KEY = stringSetPreferencesKey("pinned_chats")
     }
 
@@ -29,6 +35,30 @@ class AppSettingsRepositoryImpl(
         }
         .map { preferences ->
             preferences[NOTIFICATIONS_ENABLED_KEY] ?: true
+        }
+
+    override val notificationPreviewsEnabledFlow: Flow<Boolean> = context.dataStore.data
+        .catch { exception ->
+            if (exception is IOException) emit(emptyPreferences()) else throw exception
+        }
+        .map { preferences ->
+            preferences[NOTIFICATION_PREVIEWS_ENABLED_KEY] ?: true
+        }
+
+    override val notificationSoundEnabledFlow: Flow<Boolean> = context.dataStore.data
+        .catch { exception ->
+            if (exception is IOException) emit(emptyPreferences()) else throw exception
+        }
+        .map { preferences ->
+            preferences[NOTIFICATION_SOUND_ENABLED_KEY] ?: true
+        }
+
+    override val notificationVibrationEnabledFlow: Flow<Boolean> = context.dataStore.data
+        .catch { exception ->
+            if (exception is IOException) emit(emptyPreferences()) else throw exception
+        }
+        .map { preferences ->
+            preferences[NOTIFICATION_VIBRATION_ENABLED_KEY] ?: true
         }
 
     override val pinnedChatsFlow: Flow<Set<String>> = context.dataStore.data
@@ -42,6 +72,24 @@ class AppSettingsRepositoryImpl(
     override suspend fun setNotificationsEnabled(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[NOTIFICATIONS_ENABLED_KEY] = enabled
+        }
+    }
+
+    override suspend fun setNotificationPreviewsEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[NOTIFICATION_PREVIEWS_ENABLED_KEY] = enabled
+        }
+    }
+
+    override suspend fun setNotificationSoundEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[NOTIFICATION_SOUND_ENABLED_KEY] = enabled
+        }
+    }
+
+    override suspend fun setNotificationVibrationEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[NOTIFICATION_VIBRATION_ENABLED_KEY] = enabled
         }
     }
 

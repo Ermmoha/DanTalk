@@ -41,28 +41,28 @@ fun HelpContent(
     val items = listOf(
         HelpItem(
             icon = Icons.Filled.ChatBubble,
-            title = "Messages and chats",
-            description = "Swipe a chat to pin or delete it. Long press your message to edit or delete."
+            title = "Сообщения и чаты",
+            description = "Свайпните чат влево, чтобы закрепить или удалить. Зажмите на сообщение, чтобы удалить или изменить его."
         ),
         HelpItem(
             icon = Icons.Outlined.Notifications,
-            title = "Notifications",
-            description = "Enable notifications in Settings to receive alerts for incoming messages."
+            title = "Уведомления",
+            description = "Включите уведомления в настройках, чтобы знать о входящих сообщениях."
         ),
         HelpItem(
             icon = Icons.Outlined.Settings,
-            title = "Connection status",
-            description = "The floating network widget shows unavailable and limited internet states."
+            title = "Интернет-соединение",
+            description = "Для отправки сообщений необходимо стабильное интернет-соединение, но когда его нет, отправленные сообщения сохраняются, и при подключении к интернету будут отправлены."
         ),
         HelpItem(
             icon = Icons.Outlined.Info,
-            title = "Privacy",
-            description = "Messages are stored in your account data. Sign out from the drawer when needed."
+            title = "Спасибо",
+            description = "Спасибо, что пользуетесь мессенджером DanTalk."
         )
     )
 
     Scaffold(
-        topBar = { SettingsTopBar(title = "Help", navigateBack = component::navigateBack) },
+        topBar = { SettingsTopBar(title = "Справка", navigateBack = component::navigateBack) },
         containerColor = DanTalkTheme.colors.singleTheme
     ) { contentPadding ->
         LazyColumn(

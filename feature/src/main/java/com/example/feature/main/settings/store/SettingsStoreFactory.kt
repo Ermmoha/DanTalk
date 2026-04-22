@@ -29,12 +29,18 @@ class SettingsStoreFactory(
         class SetUser(val user: UiUserData) : Action
         class SetTheme(val theme: AppTheme) : Action
         class SetNotificationsEnabled(val enabled: Boolean) : Action
+        class SetNotificationPreviewsEnabled(val enabled: Boolean) : Action
+        class SetNotificationSoundEnabled(val enabled: Boolean) : Action
+        class SetNotificationVibrationEnabled(val enabled: Boolean) : Action
     }
 
     private sealed interface Msg {
         class SetUser(val user: UiUserData) : Msg
         class SetTheme(val theme: AppTheme) : Msg
         class SetNotificationsEnabled(val enabled: Boolean) : Msg
+        class SetNotificationPreviewsEnabled(val enabled: Boolean) : Msg
+        class SetNotificationSoundEnabled(val enabled: Boolean) : Msg
+        class SetNotificationVibrationEnabled(val enabled: Boolean) : Msg
     }
 
     fun create(): SettingsStore =
@@ -58,6 +64,21 @@ class SettingsStoreFactory(
                             dispatch(Action.SetNotificationsEnabled(it))
                         }
                     }
+                    launch {
+                        appSettingsRepository.notificationPreviewsEnabledFlow.collect {
+                            dispatch(Action.SetNotificationPreviewsEnabled(it))
+                        }
+                    }
+                    launch {
+                        appSettingsRepository.notificationSoundEnabledFlow.collect {
+                            dispatch(Action.SetNotificationSoundEnabled(it))
+                        }
+                    }
+                    launch {
+                        appSettingsRepository.notificationVibrationEnabledFlow.collect {
+                            dispatch(Action.SetNotificationVibrationEnabled(it))
+                        }
+                    }
                 },
                 executorFactory = coroutineExecutorFactory {
                     onAction<Action.SetUser> { dispatch(Msg.SetUser(it.user)) }
@@ -65,9 +86,27 @@ class SettingsStoreFactory(
                     onAction<Action.SetNotificationsEnabled> {
                         dispatch(Msg.SetNotificationsEnabled(it.enabled))
                     }
+                    onAction<Action.SetNotificationPreviewsEnabled> {
+                        dispatch(Msg.SetNotificationPreviewsEnabled(it.enabled))
+                    }
+                    onAction<Action.SetNotificationSoundEnabled> {
+                        dispatch(Msg.SetNotificationSoundEnabled(it.enabled))
+                    }
+                    onAction<Action.SetNotificationVibrationEnabled> {
+                        dispatch(Msg.SetNotificationVibrationEnabled(it.enabled))
+                    }
                     onIntent<Intent.ChangeTheme> { launch { changeTheme(it.theme) } }
                     onIntent<Intent.SetNotificationsEnabled> {
                         launch { setNotificationsEnabled(it.enabled) }
+                    }
+                    onIntent<Intent.SetNotificationPreviewsEnabled> {
+                        launch { setNotificationPreviewsEnabled(it.enabled) }
+                    }
+                    onIntent<Intent.SetNotificationSoundEnabled> {
+                        launch { setNotificationSoundEnabled(it.enabled) }
+                    }
+                    onIntent<Intent.SetNotificationVibrationEnabled> {
+                        launch { setNotificationVibrationEnabled(it.enabled) }
                     }
                     onIntent<Intent.NavigateToHelp> { publish(Label.NavigateToHelp) }
                     onIntent<Intent.NavigateBack> { publish(Label.NavigateBack) }
@@ -77,6 +116,12 @@ class SettingsStoreFactory(
                         is Msg.SetUser -> copy(user = msg.user)
                         is Msg.SetTheme -> copy(selectedTheme = msg.theme)
                         is Msg.SetNotificationsEnabled -> copy(notificationsEnabled = msg.enabled)
+                        is Msg.SetNotificationPreviewsEnabled ->
+                            copy(notificationPreviewsEnabled = msg.enabled)
+                        is Msg.SetNotificationSoundEnabled ->
+                            copy(notificationSoundEnabled = msg.enabled)
+                        is Msg.SetNotificationVibrationEnabled ->
+                            copy(notificationVibrationEnabled = msg.enabled)
                     }
                 }
             ) {}
@@ -88,4 +133,19 @@ class SettingsStoreFactory(
     private suspend fun setNotificationsEnabled(enabled: Boolean) = withContext(Dispatchers.IO) {
         appSettingsRepository.setNotificationsEnabled(enabled)
     }
+
+    private suspend fun setNotificationPreviewsEnabled(enabled: Boolean) =
+        withContext(Dispatchers.IO) {
+            appSettingsRepository.setNotificationPreviewsEnabled(enabled)
+        }
+
+    private suspend fun setNotificationSoundEnabled(enabled: Boolean) =
+        withContext(Dispatchers.IO) {
+            appSettingsRepository.setNotificationSoundEnabled(enabled)
+        }
+
+    private suspend fun setNotificationVibrationEnabled(enabled: Boolean) =
+        withContext(Dispatchers.IO) {
+            appSettingsRepository.setNotificationVibrationEnabled(enabled)
+        }
 }

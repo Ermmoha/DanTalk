@@ -1,6 +1,7 @@
 package com.example.dantalk
 
 import android.app.Application
+import com.example.background.notification.FcmTokenRegistrar
 import androidx.work.WorkManager
 import com.example.background.notification.IncomingMessageNotifier
 import com.example.background.worker.di.WorkerModule
@@ -45,6 +46,9 @@ class DanTalkApplication : Application(), KoinComponent {
 
         val incomingMessageNotifier = getKoin().get<IncomingMessageNotifier>()
         incomingMessageNotifier.observeIncomingMessages(CoroutineScope(Dispatchers.IO))
+
+        val fcmTokenRegistrar = getKoin().get<FcmTokenRegistrar>()
+        fcmTokenRegistrar.observeUserAndRegisterToken(CoroutineScope(Dispatchers.IO))
 
         val workManager = getKoin().get<WorkManager>()
         workManager.enqueue(getRequestPendingSync())
