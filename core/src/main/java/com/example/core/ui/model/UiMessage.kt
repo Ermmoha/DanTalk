@@ -8,6 +8,12 @@ data class UiMessage(
     val isPending: Boolean,
     val isEdited: Boolean,
     val isPhoto: Boolean,
+    val isVoice: Boolean,
+    val mediaDurationMillis: Long,
+    val mediaSizeBytes: Long,
+    val replyToMessageId: String,
+    val replyToSender: String,
+    val replyToText: String,
     val sentAt: Long,
     val date: String,
     val time: String

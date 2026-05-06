@@ -11,6 +11,12 @@ internal fun Message.toEntity() =
         pending = isPending,
         edited = isEdited,
         photo = isPhoto,
+        voice = isVoice,
+        mediaDurationMillis = mediaDurationMillis,
+        mediaSizeBytes = mediaSizeBytes,
+        replyToMessageId = replyToMessageId,
+        replyToSender = replyToSender,
+        replyToText = replyToText,
         sentAt = sentAt
     )
 
@@ -23,5 +29,11 @@ internal fun MessageEntity.toDomain(id: String) =
         isPending = pending,
         isEdited = edited,
         isPhoto = photo,
+        isVoice = voice,
+        mediaDurationMillis = mediaDurationMillis,
+        mediaSizeBytes = mediaSizeBytes,
+        replyToMessageId = replyToMessageId,
+        replyToSender = replyToSender,
+        replyToText = replyToText,
         sentAt = sentAt
     )

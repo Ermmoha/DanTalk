@@ -5,29 +5,32 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
 import java.net.URL
 
 fun Context.observeConnectivityAsFlow(): Flow<ConnectionState> = callbackFlow {
     val connectivityManager =
         getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+    var checkJob: Job? = null
 
-    fun sendResolvedState(capabilities: NetworkCapabilities? = null) {
-        launch {
-            trySend(connectivityManager.resolveConnectionState(capabilities))
+    fun sendResolvedState(network: Network? = connectivityManager.activeNetwork) {
+        checkJob?.cancel()
+        checkJob = launch(Dispatchers.IO) {
+            trySend(connectivityManager.resolveConnectionState(network))
         }
     }
 
     val callback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
-            sendResolvedState()
+            sendResolvedState(network)
         }
 
         override fun onLost(network: Network) {
@@ -35,6 +38,7 @@ fun Context.observeConnectivityAsFlow(): Flow<ConnectionState> = callbackFlow {
         }
 
         override fun onUnavailable() {
+            checkJob?.cancel()
             trySend(ConnectionState.Unavailable)
         }
 
@@ -42,41 +46,42 @@ fun Context.observeConnectivityAsFlow(): Flow<ConnectionState> = callbackFlow {
             network: Network,
             networkCapabilities: NetworkCapabilities
         ) {
-            sendResolvedState(networkCapabilities)
+            sendResolvedState(network)
         }
     }
 
+    trySend(ConnectionState.Checking)
     sendResolvedState()
     connectivityManager.registerDefaultNetworkCallback(callback)
 
     awaitClose {
+        checkJob?.cancel()
         connectivityManager.unregisterNetworkCallback(callback)
     }
 }
     .distinctUntilChanged()
     .flowOn(Dispatchers.IO)
 
-private suspend fun ConnectivityManager.resolveConnectionState(
-    capabilitiesOverride: NetworkCapabilities? = null
-): ConnectionState {
-    val active = activeNetwork ?: return ConnectionState.Unavailable
-    val capabilities = capabilitiesOverride ?: run {
-        getNetworkCapabilities(active) ?: return ConnectionState.Unavailable
-    }
+private suspend fun ConnectivityManager.resolveConnectionState(network: Network?): ConnectionState {
+    val activeNetwork = network ?: return ConnectionState.Unavailable
+    val capabilities = getNetworkCapabilities(activeNetwork) ?: return ConnectionState.Unavailable
 
     val hasInternetCapability = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-    if (!hasInternetCapability) return ConnectionState.Unavailable
-
     val hasTransport = capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
         capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) ||
         capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) ||
         capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN)
-    if (!hasTransport) return ConnectionState.Unavailable
 
-    return if (hasRealInternetAccess(active)) {
+    if (!hasInternetCapability || !hasTransport) return ConnectionState.Unavailable
+
+    if (capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) {
+        return ConnectionState.Available
+    }
+
+    return if (hasRealInternetAccess(activeNetwork)) {
         ConnectionState.Available
     } else {
-        ConnectionState.Limited
+        ConnectionState.Unavailable
     }
 }
 

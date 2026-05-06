@@ -214,7 +214,7 @@ private fun Content(
                         profileFormFields = fields,
                     )
             }
-            if (connectionState !is ConnectionState.Available)
+            if (connectionState is ConnectionState.Unavailable)
                 NoInternetConnection(
                     connectionState = connectionState,
                     modifier = Modifier

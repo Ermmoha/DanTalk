@@ -6,8 +6,8 @@ import androidx.compose.runtime.produceState
 import androidx.compose.ui.platform.LocalContext
 
 sealed class ConnectionState {
+    data object Checking : ConnectionState()
     data object Available : ConnectionState()
-    data object Limited : ConnectionState()
     data object Unavailable : ConnectionState()
 }
 
@@ -15,7 +15,7 @@ sealed class ConnectionState {
 fun connectionState(): State<ConnectionState> {
     val context = LocalContext.current
 
-    return produceState<ConnectionState>(initialValue = ConnectionState.Unavailable) {
+    return produceState<ConnectionState>(initialValue = ConnectionState.Checking) {
         context.observeConnectivityAsFlow().collect { value = it }
     }
 }

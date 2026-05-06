@@ -16,7 +16,7 @@ class NetworkSyncManager(
     fun observeNetworkChanges(scope: CoroutineScope) {
         scope.launch(Dispatchers.IO) {
             context.observeConnectivityAsFlow().collect { state ->
-                if (state is ConnectionState.Available || state is ConnectionState.Limited) {
+                if (state is ConnectionState.Available) {
                     Log.d("NetworkSyncManager", "Network is connected")
                     firestore.enableNetwork()
                 }

@@ -124,12 +124,16 @@ internal class ChatRepositoryImpl(
     }
 
     override suspend fun deleteMessage(chatId: String, messageId: String) {
-        firestore.collection("chats")
-            .document(chatId)
-            .collection("messages")
-            .document(messageId)
-            .delete()
-            .await()
+        runCatching {
+            firestore.collection("chats")
+                .document(chatId)
+                .collection("messages")
+                .document(messageId)
+                .delete()
+                .await()
+        }.onFailure {
+            Log.d("Firestore", "Failed to delete message $it")
+        }
     }
 
     override fun getChatMessages(chatId: String): Flow<List<Message>> = callbackFlow {
@@ -151,12 +155,16 @@ internal class ChatRepositoryImpl(
 
     override suspend fun readMessage(chatId: String, messageIds: List<String>) {
         messageIds.forEach { messageId ->
-            firestore.collection("chats")
-                .document(chatId)
-                .collection("messages")
-                .document(messageId)
-                .update("read", true)
-                .await()
+            runCatching {
+                firestore.collection("chats")
+                    .document(chatId)
+                    .collection("messages")
+                    .document(messageId)
+                    .update("read", true)
+                    .await()
+            }.onFailure {
+                Log.d("Firestore", "Failed to mark message as read $it")
+            }
         }
     }
 

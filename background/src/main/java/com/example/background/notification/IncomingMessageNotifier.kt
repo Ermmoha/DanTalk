@@ -135,10 +135,13 @@ class IncomingMessageNotifier(
                 if (senderId == currentUserId) return@addSnapshotListener
 
                 val isPhoto = messageDoc.getBoolean("photo") ?: false
+                val isVoice = messageDoc.getBoolean("voice") ?: false
                 val body = if (!settings.previewsEnabled) {
                     "Open DanTalk to view this message"
                 } else if (isPhoto) {
-                    "Sent a photo"
+                    "Фото"
+                } else if (isVoice) {
+                    "Голосовое сообщение"
                 } else {
                     messageDoc.getString("message").orEmpty().ifBlank { "New message" }
                 }

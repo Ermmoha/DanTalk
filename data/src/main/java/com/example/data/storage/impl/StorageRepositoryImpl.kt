@@ -2,10 +2,13 @@ package com.example.data.storage.impl
 
 import android.content.Context
 import android.net.Uri
-import com.example.core.util.SupabaseConst
+import android.webkit.MimeTypeMap
 import com.example.data.storage.api.StorageRepository
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.storage.storage
+import io.github.jan.supabase.storage.upload
+import io.ktor.http.ContentType
+import java.io.File
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -16,40 +19,96 @@ internal class StorageRepositoryImpl(
 
     @OptIn(ExperimentalUuidApi::class)
     override suspend fun postAvatarImage(uri: Uri): String {
-        val inputStream = context.contentResolver.openInputStream(uri)!!
-        val bytes = inputStream.readBytes()
-        val id = Uuid.random().toString()
         val bucket = client.storage.from("avatar")
-        bucket.upload("$id.jpg", bytes) {
+        val extension = context.resolveExtension(uri, fallback = "jpg")
+        val response = bucket.upload("${Uuid.random()}.$extension", uri) {
             upsert = false
-        }.let { response ->
-            val storagePath = SupabaseConst.URL + "/storage/v1/object/public/avatar//"
-            return storagePath + response.path
+            context.resolveMimeType(uri, fallbackExtension = "jpg")?.let { mimeType ->
+                runCatching { contentType = ContentType.parse(mimeType) }
+            }
         }
+        return bucket.publicUrl(response.path)
     }
 
     override suspend fun downloadAvatarImage(url: String): ByteArray {
-        val filename = url.split("/").last()
-        val bucket = client.storage.from("avatar")
-        val bytes = bucket.downloadPublic(filename)
-        return bytes
+        val (bucketName, path) = url.toPublicStoragePath()
+        return client.storage.from(bucketName).downloadPublic(path)
     }
 
+    override suspend fun postMessageImage(uri: Uri): Result<String> =
+        runCatching { uploadPublicMedia(bucketName = "photos", uri = uri, fallbackExtension = "jpg") }
+
+    override suspend fun postMessageVoice(uri: Uri): Result<String> =
+        runCatching { uploadPublicMedia(bucketName = "photos", uri = uri, fallbackExtension = "m4a") }
+
     @OptIn(ExperimentalUuidApi::class)
-    override suspend fun postMessageImage(uri: Uri): Result<String> {
-        try {
-            val inputStream = context.contentResolver.openInputStream(uri)!!
-            val bytes = inputStream.readBytes()
-            val id = Uuid.random().toString()
-            val bucket = client.storage.from("photos")
-            bucket.upload("$id.jpg", bytes) {
+    private suspend fun uploadPublicMedia(
+        bucketName: String,
+        uri: Uri,
+        fallbackExtension: String
+    ): String {
+        val bucket = client.storage.from(bucketName)
+        val extension = context.resolveExtension(uri, fallbackExtension)
+        val path = "${Uuid.random()}.$extension"
+        val response = if (uri.scheme == "file") {
+            bucket.upload(path, File(uri.path.orEmpty())) {
                 upsert = false
-            }.let { response ->
-                val storagePath = SupabaseConst.URL + "/storage/v1/object/public/photos//"
-                return Result.success(storagePath + response.path)
+                context.resolveMimeType(uri, fallbackExtension)?.let { mimeType ->
+                    runCatching { contentType = ContentType.parse(mimeType) }
+                }
             }
-        } catch (e: Exception) {
-            return Result.failure(e)
+        } else {
+            bucket.upload(path, uri) {
+                upsert = false
+                context.resolveMimeType(uri, fallbackExtension)?.let { mimeType ->
+                    runCatching { contentType = ContentType.parse(mimeType) }
+                }
+            }
         }
+        return bucket.publicUrl(response.path)
+    }
+
+    private fun String.toPublicStoragePath(): Pair<String, String> {
+        val marker = "/storage/v1/object/public/"
+        val publicPath = substringAfter(marker, missingDelimiterValue = "")
+        val parts = publicPath
+            .split("/")
+            .filter { it.isNotBlank() }
+
+        if (parts.size >= 2) {
+            return parts.first() to parts.drop(1).joinToString("/")
+        }
+
+        return "avatar" to split("/").last()
+    }
+
+    private fun Context.resolveMimeType(uri: Uri, fallbackExtension: String? = null): String? {
+        if (uri.scheme == "file") {
+            val extension = uri.path
+                ?.substringAfterLast('.', missingDelimiterValue = "")
+                ?.takeIf { it.isNotBlank() }
+            return extension
+                ?.let { MimeTypeMap.getSingleton().getMimeTypeFromExtension(it) }
+                ?: fallbackExtension?.let {
+                    MimeTypeMap.getSingleton().getMimeTypeFromExtension(it)
+                }
+        }
+
+        return contentResolver.getType(uri)
+    }
+
+    private fun Context.resolveExtension(uri: Uri, fallback: String): String {
+        if (uri.scheme == "file") {
+            return uri.path
+                ?.substringAfterLast('.', missingDelimiterValue = "")
+                ?.takeIf { it.isNotBlank() }
+                ?: fallback
+        }
+
+        val mimeType = resolveMimeType(uri) ?: return fallback
+        return MimeTypeMap.getSingleton()
+            .getExtensionFromMimeType(mimeType)
+            ?.takeIf { it.isNotBlank() }
+            ?: fallback
     }
 }

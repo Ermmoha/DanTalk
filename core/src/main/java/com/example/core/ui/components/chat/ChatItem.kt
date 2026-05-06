@@ -16,6 +16,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Pending
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.Image
+import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -36,6 +38,7 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.example.core.design.theme.DanTalkTheme
 import com.example.core.ui.model.UiChat
+import com.example.core.ui.model.UiMessage
 import com.example.core.util.toDateString
 import kotlin.math.max
 
@@ -97,11 +100,11 @@ fun ChatItem(
                         }
                     }
                     Text(
-                        text = if (chat.lastMessage?.date != System.currentTimeMillis()
-                                .toDateString()
-                        )
+                        text = if (chat.lastMessage?.date != System.currentTimeMillis().toDateString()) {
                             chat.lastMessage?.date ?: ""
-                        else chat.lastMessage.time,
+                        } else {
+                            chat.lastMessage.time
+                        },
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
                         color = DanTalkTheme.colors.hint
@@ -112,16 +115,18 @@ fun ChatItem(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     chat.lastMessage.let { lastMsg ->
-                        if (lastMsg?.isPhoto == true)
-                            LastPhotoMessage(
-                                url = lastMsg.message,
+                        if (lastMsg?.isMedia == true) {
+                            LastMediaMessage(
+                                message = lastMsg,
                                 modifier = Modifier.weight(1f)
                             )
-                        else
+                        } else {
                             Text(
-                                text = if (lastMsg?.isCurrentUserMessage == true)
+                                text = if (lastMsg?.isCurrentUserMessage == true) {
                                     "Вы: ${lastMsg.message}"
-                                else lastMsg?.message ?: "Нет сообщений",
+                                } else {
+                                    lastMsg?.message ?: "Нет сообщений"
+                                },
                                 modifier = Modifier.weight(1f),
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium,
@@ -129,14 +134,16 @@ fun ChatItem(
                                 overflow = TextOverflow.Ellipsis,
                                 color = DanTalkTheme.colors.hint
                             )
+                        }
                         chat.unreadMessagesCount.let {
                             if (it > 0) NewMessagesIndicator(it)
                         }
-                        if (chat.unreadMessagesCount < 1 && lastMsg != null && lastMsg.isCurrentUserMessage)
+                        if (chat.unreadMessagesCount < 1 && lastMsg != null && lastMsg.isCurrentUserMessage) {
                             MessageStatus(
                                 isRead = lastMsg.read,
                                 isPending = lastMsg.isPending
                             )
+                        }
                     }
                 }
             }
@@ -154,7 +161,7 @@ private fun NewMessagesIndicator(
 ) {
     val color = DanTalkTheme.colors.main
     Text(
-        text = if(amount < 1000) amount.toString() else "999+",
+        text = if (amount < 1000) amount.toString() else "999+",
         modifier = Modifier
             .padding(horizontal = 4.dp)
             .drawBehind {
@@ -169,7 +176,7 @@ private fun NewMessagesIndicator(
                         radius = diameter / 2,
                         center = center
                     )
-                } else
+                } else {
                     drawRoundRect(
                         color = color,
                         size = Size(width, height),
@@ -179,6 +186,7 @@ private fun NewMessagesIndicator(
                         ),
                         cornerRadius = CornerRadius(height)
                     )
+                }
             }
             .padding(horizontal = 6.dp, vertical = 2.dp),
         fontSize = 12.sp,
@@ -201,25 +209,42 @@ private fun MessageStatus(
 }
 
 @Composable
-private fun LastPhotoMessage(
-    url: String,
+private fun LastMediaMessage(
+    message: UiMessage,
     modifier: Modifier = Modifier,
 ) {
+    val title = when {
+        message.isVoice -> "Голосовое сообщение"
+        else -> "Изображение"
+    }
+
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        AsyncImage(
-            model = url,
-            contentDescription = null,
-            modifier = Modifier
-                .size(20.dp)
-                .clip(RoundedCornerShape(4.dp)),
-            contentScale = ContentScale.Crop
-        )
+        if (message.isPhoto) {
+            AsyncImage(
+                model = message.message,
+                contentDescription = null,
+                modifier = Modifier
+                    .size(20.dp)
+                    .clip(RoundedCornerShape(4.dp)),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            Icon(
+                imageVector = when {
+                    message.isVoice -> Icons.Outlined.Mic
+                    else -> Icons.Outlined.Image
+                },
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+                tint = DanTalkTheme.colors.main
+            )
+        }
         Text(
-            text = "Изображение",
+            text = if (message.isCurrentUserMessage) "Вы: $title" else title,
             fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold,
             maxLines = 2,
@@ -228,3 +253,6 @@ private fun LastPhotoMessage(
         )
     }
 }
+
+private val UiMessage.isMedia: Boolean
+    get() = isPhoto || isVoice

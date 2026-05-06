@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Notifications
@@ -25,14 +24,19 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -102,7 +106,7 @@ fun SettingsContent(
                 ActionCard(
                     icon = Icons.Outlined.Info,
                     title = "Помощь",
-                    description = "Открыть справку для помощи",
+                    description = "Открыть справку по приложению",
                     onClick = { component.onIntent(SettingsStore.Intent.NavigateToHelp) }
                 )
             }
@@ -114,12 +118,7 @@ fun SettingsContent(
 private fun Header(
     state: SettingsStore.State
 ) {
-    Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = DanTalkTheme.colors.altSingleTheme
-        )
-    ) {
+    SettingsCard(containerColor = DanTalkTheme.colors.altSingleTheme) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -133,7 +132,8 @@ private fun Header(
                 modifier = Modifier
                     .size(54.dp)
                     .clip(CircleShape)
-                    .background(DanTalkTheme.colors.spacer, CircleShape)
+                    .background(DanTalkTheme.colors.spacer, CircleShape),
+                contentScale = ContentScale.Crop
             )
             Column(
                 verticalArrangement = Arrangement.spacedBy(2.dp)
@@ -165,33 +165,16 @@ private fun ThemeCard(
         AppTheme.DARK to "Темная"
     )
 
-    Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = DanTalkTheme.colors.altSingleTheme
-        )
-    ) {
+    SettingsCard {
         Column(
             modifier = Modifier.padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Palette,
-                    contentDescription = null,
-                    tint = DanTalkTheme.colors.main
-                )
-                Text(
-                    text = "Тема",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = DanTalkTheme.colors.oppositeTheme
-                )
-            }
-            HorizontalDivider(color = DanTalkTheme.colors.spacer)
+            SectionTitle(
+                icon = Icons.Outlined.Palette,
+                title = "Тема"
+            )
+            HorizontalDivider(color = DanTalkTheme.colors.main.copy(alpha = 0.18f))
             items.forEach { (theme, title) ->
                 Row(
                     modifier = Modifier
@@ -207,7 +190,11 @@ private fun ThemeCard(
                     )
                     RadioButton(
                         selected = selectedTheme == theme,
-                        onClick = { onThemeChange(theme) }
+                        onClick = { onThemeChange(theme) },
+                        colors = RadioButtonDefaults.colors(
+                            selectedColor = DanTalkTheme.colors.main,
+                            unselectedColor = DanTalkTheme.colors.hint
+                        )
                     )
                 }
             }
@@ -226,12 +213,7 @@ private fun NotificationCard(
     onSoundEnabledChange: (Boolean) -> Unit,
     onVibrationEnabledChange: (Boolean) -> Unit
 ) {
-    Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = DanTalkTheme.colors.altSingleTheme
-        )
-    ) {
+    SettingsCard {
         Column(
             modifier = Modifier.padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -243,11 +225,11 @@ private fun NotificationCard(
                 checked = enabled,
                 onCheckedChange = onEnabledChange
             )
-            HorizontalDivider(color = DanTalkTheme.colors.spacer)
+            HorizontalDivider(color = DanTalkTheme.colors.main.copy(alpha = 0.18f))
             SettingSwitchRow(
                 icon = Icons.Outlined.Visibility,
                 title = "Содержимое сообщений",
-                description = "Показывать содержимое сообщений в уведомлениях",
+                description = "Показывать текст сообщений в уведомлениях",
                 checked = previewsEnabled,
                 enabled = enabled,
                 onCheckedChange = onPreviewsEnabledChange
@@ -255,7 +237,7 @@ private fun NotificationCard(
             SettingSwitchRow(
                 icon = Icons.Outlined.VolumeUp,
                 title = "Звук уведомлений",
-                description = "Звук при получении уведомлений",
+                description = "Включить звук при получении уведомлений",
                 checked = soundEnabled,
                 enabled = enabled,
                 onCheckedChange = onSoundEnabledChange
@@ -263,7 +245,7 @@ private fun NotificationCard(
             SettingSwitchRow(
                 icon = Icons.Outlined.Vibration,
                 title = "Вибрация",
-                description = "Вибрация при получении уведомлений",
+                description = "Включить вибрацию при получении уведомлений",
                 checked = vibrationEnabled,
                 enabled = enabled,
                 onCheckedChange = onVibrationEnabledChange
@@ -311,7 +293,17 @@ private fun SettingSwitchRow(
         Switch(
             checked = checked,
             enabled = enabled,
-            onCheckedChange = onCheckedChange
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Color.White,
+                checkedTrackColor = DanTalkTheme.colors.main,
+                uncheckedThumbColor = DanTalkTheme.colors.hint,
+                uncheckedTrackColor = DanTalkTheme.colors.main.copy(alpha = 0.18f),
+                disabledCheckedThumbColor = Color.White.copy(alpha = 0.7f),
+                disabledCheckedTrackColor = DanTalkTheme.colors.main.copy(alpha = 0.35f),
+                disabledUncheckedThumbColor = DanTalkTheme.colors.hint.copy(alpha = 0.6f),
+                disabledUncheckedTrackColor = DanTalkTheme.colors.main.copy(alpha = 0.1f)
+            )
         )
     }
 }
@@ -323,12 +315,8 @@ private fun ActionCard(
     description: String,
     onClick: () -> Unit
 ) {
-    Card(
-        modifier = Modifier.clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = DanTalkTheme.colors.altSingleTheme
-        )
+    SettingsCard(
+        modifier = Modifier.clickable(onClick = onClick)
     ) {
         Row(
             modifier = Modifier
@@ -355,5 +343,45 @@ private fun ActionCard(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun SectionTitle(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = DanTalkTheme.colors.main
+        )
+        Text(
+            text = title,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = DanTalkTheme.colors.oppositeTheme
+        )
+    }
+}
+
+@Composable
+private fun SettingsCard(
+    modifier: Modifier = Modifier,
+    containerColor: Color = DanTalkTheme.colors.main.copy(alpha = 0.08f),
+    content: @Composable () -> Unit
+) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = containerColor
+        )
+    ) {
+        content()
     }
 }

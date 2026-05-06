@@ -116,7 +116,7 @@ private fun Content(
                     }
                 }
             }
-            if (connectionState !is ConnectionState.Available) {
+            if (connectionState is ConnectionState.Unavailable) {
                 NoInternetConnection(
                     connectionState = connectionState,
                     modifier = Modifier.align(Alignment.BottomEnd)

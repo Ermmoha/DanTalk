@@ -8,5 +8,11 @@ data class Message(
     val isPending: Boolean = true,
     val isEdited: Boolean = false,
     val isPhoto: Boolean = false,
+    val isVoice: Boolean = false,
+    val mediaDurationMillis: Long = 0L,
+    val mediaSizeBytes: Long = 0L,
+    val replyToMessageId: String = "",
+    val replyToSender: String = "",
+    val replyToText: String = "",
     val sentAt: Long = System.currentTimeMillis()
 )

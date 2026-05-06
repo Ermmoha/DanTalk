@@ -116,7 +116,7 @@ private fun Content(
                     onTogglePinClick = { onIntent(HomeStore.Intent.TogglePinChat(it)) },
                     chats = state.chats,
                 )
-            if (connectionState !is ConnectionState.Available)
+            if (connectionState is ConnectionState.Unavailable)
                 NoInternetConnection(
                     connectionState = connectionState,
                     modifier = Modifier.align(Alignment.BottomEnd)

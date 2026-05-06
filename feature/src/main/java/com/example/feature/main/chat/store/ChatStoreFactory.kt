@@ -1,6 +1,5 @@
 package com.example.feature.main.chat.store
 
-import android.net.Uri
 import android.util.Log
 import com.arkivanov.mvikotlin.core.store.Store
 import com.arkivanov.mvikotlin.core.store.StoreFactory
@@ -46,6 +45,8 @@ class ChatStoreFactory(
         data object ClearMessage : Msg
         class StartEditMessage(val messageId: String, val message: String) : Msg
         data object CancelEditMessage : Msg
+        class StartReplyMessage(val message: UiMessage) : Msg
+        data object CancelReplyMessage : Msg
         class SetUser(val user: UserData) : Msg
     }
 
@@ -72,14 +73,41 @@ class ChatStoreFactory(
                         dispatch(Msg.StartEditMessage(it.messageId, it.message))
                     }
                     onIntent<Intent.CancelEditMessage> { dispatch(Msg.CancelEditMessage) }
+                    onIntent<Intent.StartReplyMessage> {
+                        dispatch(Msg.StartReplyMessage(it.message))
+                    }
+                    onIntent<Intent.CancelReplyMessage> { dispatch(Msg.CancelReplyMessage) }
                     onIntent<Intent.DeleteMessage> { deleteMessage(it.messageId) }
                     onIntent<Intent.SendPhoto> {
                         try {
+                            val reply = state().replyMetadata()
                             ImageLoadServiceStarter.postMessageImage(
                                 context = it.context,
                                 chatId = chatId,
-                                uri = it.uri
+                                uri = it.uri,
+                                replyToMessageId = reply.messageId,
+                                replyToSender = reply.sender,
+                                replyToText = reply.text
                             )
+                            dispatch(Msg.CancelReplyMessage)
+                        } catch (e: Exception) {
+                            Log.d("ChatStore", e.message.toString())
+                        }
+                    }
+                    onIntent<Intent.SendVoice> {
+                        try {
+                            val reply = state().replyMetadata()
+                            ImageLoadServiceStarter.postMessageVoice(
+                                context = it.context,
+                                chatId = chatId,
+                                uri = it.uri,
+                                durationMillis = it.durationMillis,
+                                sizeBytes = it.sizeBytes,
+                                replyToMessageId = reply.messageId,
+                                replyToSender = reply.sender,
+                                replyToText = reply.text
+                            )
+                            dispatch(Msg.CancelReplyMessage)
                         } catch (e: Exception) {
                             Log.d("ChatStore", e.message.toString())
                         }
@@ -98,12 +126,22 @@ class ChatStoreFactory(
                         is Msg.GetChat -> copy(chat = msg.chat)
                         is Msg.GetMessages -> copy(messages = msg.messages)
                         is Msg.OnMessageChange -> copy(currentMessage = msg.message)
-                        is Msg.ClearMessage -> copy(currentMessage = "", editingMessageId = null)
+                        is Msg.ClearMessage -> copy(
+                            currentMessage = "",
+                            editingMessageId = null,
+                            replyingToMessage = null
+                        )
                         is Msg.StartEditMessage -> copy(
                             editingMessageId = msg.messageId,
-                            currentMessage = msg.message
+                            currentMessage = msg.message,
+                            replyingToMessage = null
                         )
                         is Msg.CancelEditMessage -> copy(editingMessageId = null, currentMessage = "")
+                        is Msg.StartReplyMessage -> copy(
+                            editingMessageId = null,
+                            replyingToMessage = msg.message
+                        )
+                        is Msg.CancelReplyMessage -> copy(replyingToMessage = null)
                         is Msg.SetUser -> copy(currentUser = msg.user)
                     }
                 }
@@ -126,6 +164,7 @@ class ChatStoreFactory(
 
         val messageText = state().currentMessage.trim()
         val editingMessageId = state().editingMessageId
+        val reply = state().replyMetadata()
         dispatch(Msg.ClearMessage)
 
         launch(Dispatchers.IO) {
@@ -135,7 +174,10 @@ class ChatStoreFactory(
                 val message = Message(
                     id = Uuid.random().toString(),
                     sender = state().currentUser.id,
-                    message = messageText
+                    message = messageText,
+                    replyToMessageId = reply.messageId,
+                    replyToSender = reply.sender,
+                    replyToText = reply.text
                 )
                 chatRepository.sendMessage(chatId, message)
             }
@@ -164,8 +206,9 @@ class ChatStoreFactory(
 
     private fun CoroutineExecutorScope<State, Msg, Nothing, Nothing>.deleteMessage(messageId: String) {
         if (messageId == state().editingMessageId) dispatch(Msg.CancelEditMessage)
+        if (messageId == state().replyingToMessage?.id) dispatch(Msg.CancelReplyMessage)
         launch(Dispatchers.IO) {
-            chatRepository.deleteMessage(chatId, messageId)
+            runCatching { chatRepository.deleteMessage(chatId, messageId) }
         }
     }
 
@@ -178,4 +221,30 @@ class ChatStoreFactory(
                     )
                 } + listOf(MessageListItem.DateItem(date))
             }
+
+    private fun State.replyMetadata(): ReplyMetadata {
+        val message = replyingToMessage ?: return ReplyMetadata()
+        return ReplyMetadata(
+            messageId = message.id,
+            sender = if (message.isCurrentUserMessage) {
+                currentUser.username.ifBlank { "Вы" }
+            } else {
+                chat?.user?.username?.ifBlank { "Сообщение" } ?: "Сообщение"
+            },
+            text = message.replyPreviewText().take(140)
+        )
+    }
+
+    private fun UiMessage.replyPreviewText(): String =
+        when {
+            isPhoto -> "Фото"
+            isVoice -> "Голосовое сообщение"
+            else -> message
+        }
+
+    private data class ReplyMetadata(
+        val messageId: String = "",
+        val sender: String = "",
+        val text: String = ""
+    )
 }
