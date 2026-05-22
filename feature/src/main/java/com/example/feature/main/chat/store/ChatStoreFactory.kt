@@ -34,14 +34,16 @@ class ChatStoreFactory(
 ) {
     private sealed interface Action {
         class GetChat(val chat: UiChat) : Action
-        class GetMessages(val messages: List<MessageListItem>) : Action
+        class GetMessages(val messages: List<UiMessage>) : Action
         class SetUser(val user: UserData) : Action
     }
 
     private sealed interface Msg {
         class GetChat(val chat: UiChat) : Msg
-        class GetMessages(val messages: List<MessageListItem>) : Msg
+        class GetMessages(val messages: List<UiMessage>) : Msg
         class OnMessageChange(val message: String) : Msg
+        class AddPendingMessage(val message: UiMessage) : Msg
+        class RemovePendingMessage(val messageId: String) : Msg
         data object ClearMessage : Msg
         class StartEditMessage(val messageId: String, val message: String) : Msg
         data object CancelEditMessage : Msg
@@ -79,38 +81,59 @@ class ChatStoreFactory(
                     onIntent<Intent.CancelReplyMessage> { dispatch(Msg.CancelReplyMessage) }
                     onIntent<Intent.DeleteMessage> { deleteMessage(it.messageId) }
                     onIntent<Intent.SendPhoto> {
+                        val reply = state().replyMetadata()
+                        val pendingMessage = state().pendingMediaMessage(
+                            content = it.uri.toString(),
+                            isPhoto = true
+                        )
+                        dispatch(Msg.AddPendingMessage(pendingMessage))
+                        dispatch(Msg.CancelReplyMessage)
                         try {
-                            val reply = state().replyMetadata()
                             ImageLoadServiceStarter.postMessageImage(
                                 context = it.context,
                                 chatId = chatId,
                                 uri = it.uri,
+                                messageId = pendingMessage.id,
+                                sentAt = pendingMessage.sentAt,
                                 replyToMessageId = reply.messageId,
                                 replyToSender = reply.sender,
                                 replyToText = reply.text
                             )
-                            dispatch(Msg.CancelReplyMessage)
                         } catch (e: Exception) {
+                            dispatch(Msg.RemovePendingMessage(pendingMessage.id))
                             Log.d("ChatStore", e.message.toString())
                         }
                     }
                     onIntent<Intent.SendVoice> {
+                        val reply = state().replyMetadata()
+                        val pendingMessage = state().pendingMediaMessage(
+                            content = it.uri.toString(),
+                            isVoice = true,
+                            durationMillis = it.durationMillis,
+                            sizeBytes = it.sizeBytes
+                        )
+                        dispatch(Msg.AddPendingMessage(pendingMessage))
+                        dispatch(Msg.CancelReplyMessage)
                         try {
-                            val reply = state().replyMetadata()
                             ImageLoadServiceStarter.postMessageVoice(
                                 context = it.context,
                                 chatId = chatId,
                                 uri = it.uri,
                                 durationMillis = it.durationMillis,
                                 sizeBytes = it.sizeBytes,
+                                messageId = pendingMessage.id,
+                                sentAt = pendingMessage.sentAt,
                                 replyToMessageId = reply.messageId,
                                 replyToSender = reply.sender,
                                 replyToText = reply.text
                             )
-                            dispatch(Msg.CancelReplyMessage)
                         } catch (e: Exception) {
+                            dispatch(Msg.RemovePendingMessage(pendingMessage.id))
                             Log.d("ChatStore", e.message.toString())
                         }
+                    }
+                    onIntent<Intent.MediaUploadFailed> {
+                        dispatch(Msg.RemovePendingMessage(it.messageId))
                     }
                     onIntent<Intent.ReadMessage> { readMessage(it.ids) }
                     onIntent<Intent.DownloadImage> {
@@ -124,8 +147,10 @@ class ChatStoreFactory(
                 reducer = { msg ->
                     when (msg) {
                         is Msg.GetChat -> copy(chat = msg.chat)
-                        is Msg.GetMessages -> copy(messages = msg.messages)
+                        is Msg.GetMessages -> withRemoteMessages(msg.messages)
                         is Msg.OnMessageChange -> copy(currentMessage = msg.message)
+                        is Msg.AddPendingMessage -> withPendingMessage(msg.message)
+                        is Msg.RemovePendingMessage -> withoutPendingMessage(msg.messageId)
                         is Msg.ClearMessage -> copy(
                             currentMessage = "",
                             editingMessageId = null,
@@ -149,11 +174,14 @@ class ChatStoreFactory(
 
     private suspend fun CoroutineBootstrapperScope<Action>.getChat(id: String, userId: String) =
         withContext(Dispatchers.IO) {
+            val chat = chatRepository.getChat(id)
+            withContext(Dispatchers.Main) {
+                dispatch(Action.GetChat(chat.toUi(userId)))
+            }
             chatRepository.getChatMessages(id).collect { messages ->
-                val chat = chatRepository.getChat(id)
+                val uiMessages = messages.map { it.toUi(userId) }
                 withContext(Dispatchers.Main) {
-                    dispatch(Action.GetChat(chat.toUi(userId)))
-                    dispatch(Action.GetMessages(messages.toMessageListItems(userId)))
+                    dispatch(Action.GetMessages(uiMessages))
                 }
             }
         }
@@ -165,37 +193,37 @@ class ChatStoreFactory(
         val messageText = state().currentMessage.trim()
         val editingMessageId = state().editingMessageId
         val reply = state().replyMetadata()
+        val currentUserId = state().currentUser.id
         dispatch(Msg.ClearMessage)
 
-        launch(Dispatchers.IO) {
-            if (editingMessageId != null) {
+        if (editingMessageId != null) {
+            launch(Dispatchers.IO) {
                 chatRepository.updateMessage(chatId, editingMessageId, messageText)
-            } else {
-                val message = Message(
-                    id = Uuid.random().toString(),
-                    sender = state().currentUser.id,
-                    message = messageText,
-                    replyToMessageId = reply.messageId,
-                    replyToSender = reply.sender,
-                    replyToText = reply.text
-                )
+            }
+            return
+        }
+
+        val message = Message(
+            id = Uuid.random().toString(),
+            sender = currentUserId,
+            message = messageText,
+            replyToMessageId = reply.messageId,
+            replyToSender = reply.sender,
+            replyToText = reply.text
+        )
+        dispatch(Msg.AddPendingMessage(message.copy(isPending = true).toUi(currentUserId)))
+
+        launch(Dispatchers.IO) {
+            runCatching {
                 chatRepository.sendMessage(chatId, message)
+            }.onFailure {
+                withContext(Dispatchers.Main) {
+                    dispatch(Msg.RemovePendingMessage(message.id))
+                }
+                Log.d("ChatStore", it.message.toString())
             }
         }
     }
-
-//    private fun CoroutineExecutorScope<State, Msg, Nothing, Nothing>.sendPhoto(uri: Uri) {
-//        launch(Dispatchers.IO) {
-//            val imagePath = storageRepository.postMessageImage(uri)
-//            withContext(Dispatchers.Main) {
-//                Message(
-//                    sender = state().currentUser.id,
-//                    message = imagePath,
-//                    isPhoto = true
-//                )
-//            }.let { message -> chatRepository.sendMessage(chatId, message) }
-//        }
-//    }
 
     private fun CoroutineExecutorScope<State, Nothing, Nothing, Nothing>.readMessage(ids: List<String>) {
         if (state().chat == null) return
@@ -212,15 +240,64 @@ class ChatStoreFactory(
         }
     }
 
-    private fun List<Message>.toMessageListItems(currentUserId: String) =
-        groupBy { it.sentAt.toDateString() }
+    private fun State.withRemoteMessages(messages: List<UiMessage>): State {
+        val remoteIds = messages.mapTo(mutableSetOf()) { it.id }
+        val nextPendingMessages = pendingMessages.filterNot { it.id in remoteIds }
+        return copy(
+            remoteMessages = messages,
+            pendingMessages = nextPendingMessages,
+            messages = (messages + nextPendingMessages).toMessageListItems()
+        )
+    }
+
+    private fun State.withPendingMessage(message: UiMessage): State {
+        val nextPendingMessages = pendingMessages
+            .filterNot { it.id == message.id } + message
+        return copy(
+            pendingMessages = nextPendingMessages,
+            messages = (remoteMessages + nextPendingMessages).toMessageListItems()
+        )
+    }
+
+    private fun State.withoutPendingMessage(messageId: String): State {
+        val nextPendingMessages = pendingMessages.filterNot { it.id == messageId }
+        return copy(
+            pendingMessages = nextPendingMessages,
+            messages = (remoteMessages + nextPendingMessages).toMessageListItems()
+        )
+    }
+
+    private fun List<UiMessage>.toMessageListItems() =
+        sortedByDescending { it.sentAt }
+            .groupBy { it.sentAt.toDateString() }
             .flatMap { (date, messages) ->
-                messages.map {
-                    MessageListItem.MessageItem(
-                        it.toUi(currentUserId)
-                    )
-                } + listOf(MessageListItem.DateItem(date))
+                messages.map { MessageListItem.MessageItem(it) } + listOf(MessageListItem.DateItem(date))
             }
+
+    @OptIn(ExperimentalUuidApi::class)
+    private fun State.pendingMediaMessage(
+        content: String,
+        isPhoto: Boolean = false,
+        isVoice: Boolean = false,
+        durationMillis: Long = 0L,
+        sizeBytes: Long = 0L
+    ): UiMessage {
+        val reply = replyMetadata()
+        val message = Message(
+            id = Uuid.random().toString(),
+            sender = currentUser.id,
+            message = content,
+            isPending = true,
+            isPhoto = isPhoto,
+            isVoice = isVoice,
+            mediaDurationMillis = durationMillis,
+            mediaSizeBytes = sizeBytes,
+            replyToMessageId = reply.messageId,
+            replyToSender = reply.sender,
+            replyToText = reply.text
+        )
+        return message.toUi(currentUser.id)
+    }
 
     private fun State.replyMetadata(): ReplyMetadata {
         val message = replyingToMessage ?: return ReplyMetadata()

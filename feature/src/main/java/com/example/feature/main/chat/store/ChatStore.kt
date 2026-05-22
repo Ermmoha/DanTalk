@@ -27,6 +27,7 @@ interface ChatStore : Store<Intent, State, Label> {
         class StartReplyMessage(val message: UiMessage) : Intent
         data object CancelReplyMessage : Intent
         class DeleteMessage(val messageId: String) : Intent
+        class MediaUploadFailed(val messageId: String) : Intent
         class DownloadImage(val context: Context, val url: String) : Intent
         data object NavigateBack : Intent
     }
@@ -34,6 +35,8 @@ interface ChatStore : Store<Intent, State, Label> {
     data class State(
         val chat: UiChat? = null,
         val messages: List<MessageListItem> = emptyList(),
+        val remoteMessages: List<UiMessage> = emptyList(),
+        val pendingMessages: List<UiMessage> = emptyList(),
         val currentMessage: String = "",
         val currentUser: UserData = UserData(),
         val editingMessageId: String? = null,

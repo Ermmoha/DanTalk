@@ -42,7 +42,7 @@ class ImageLoadService : Service() {
                 val chatId = intent.getStringExtra("chat_id")
                 val uri = intent.getUriExtra("uri")
                 if (chatId != null && uri != null) {
-                    postMessageImage(chatId, uri, intent.replyMetadata())
+                    postMessageImage(chatId, uri, intent.messageMetadata(), intent.replyMetadata())
                 } else {
                     stopSelf()
                 }
@@ -54,7 +54,14 @@ class ImageLoadService : Service() {
                 val durationMillis = intent.getLongExtra("duration_millis", 0L)
                 val sizeBytes = intent.getLongExtra("size_bytes", 0L)
                 if (chatId != null && uri != null) {
-                    postMessageVoice(chatId, uri, durationMillis, sizeBytes, intent.replyMetadata())
+                    postMessageVoice(
+                        chatId = chatId,
+                        uri = uri,
+                        durationMillis = durationMillis,
+                        sizeBytes = sizeBytes,
+                        metadata = intent.messageMetadata(),
+                        reply = intent.replyMetadata()
+                    )
                 } else {
                     stopSelf()
                 }
@@ -91,23 +98,39 @@ class ImageLoadService : Service() {
         }
     }
 
-    private fun postMessageImage(chatId: String, uri: Uri, reply: ReplyMetadata) {
+    private fun postMessageImage(
+        chatId: String,
+        uri: Uri,
+        metadata: MessageMetadata,
+        reply: ReplyMetadata
+    ) {
         CoroutineScope(Dispatchers.IO).launch {
             val storageRepo = get<StorageRepository>()
             val userDataStoreRepo = get<UserDataStoreRepository>()
             val chatRepo = get<ChatRepository>()
             storageRepo.postMessageImage(uri)
-                .onSuccess {
-                    val message = Message(
-                        sender = userDataStoreRepo.getUserData.first().id,
-                        message = it,
-                        isPhoto = true
-                    ).withReply(reply)
-                    chatRepo.sendMessage(chatId, message)
-                    showCompletionNotification(this@ImageLoadService, "Изображение отправлено")
+                .onSuccess { url ->
+                    runCatching {
+                        val message = Message(
+                            id = metadata.messageId,
+                            sender = userDataStoreRepo.getUserData.first().id,
+                            message = url,
+                            isPhoto = true,
+                            sentAt = metadata.sentAt
+                        ).withReply(reply)
+                        chatRepo.sendMessage(chatId, message)
+                    }.onSuccess {
+                        showCompletionNotification(this@ImageLoadService, "Изображение отправлено")
+                    }.onFailure {
+                        notifyMediaUploadFailed(metadata.messageId)
+                        Log.e("ImageLoadService", it.message.toString())
+                        showCompletionNotification(this@ImageLoadService, "Изображение не отправлено")
+                    }
                     stopSelf()
                 }
                 .onFailure {
+                    notifyMediaUploadFailed(metadata.messageId)
+                    Log.e("ImageLoadService", it.message.toString())
                     showCompletionNotification(this@ImageLoadService, "Изображение не отправлено")
                     stopSelf()
                 }
@@ -119,6 +142,7 @@ class ImageLoadService : Service() {
         uri: Uri,
         durationMillis: Long,
         sizeBytes: Long,
+        metadata: MessageMetadata,
         reply: ReplyMetadata
     ) {
         CoroutineScope(Dispatchers.IO).launch {
@@ -126,20 +150,31 @@ class ImageLoadService : Service() {
             val userDataStoreRepo = get<UserDataStoreRepository>()
             val chatRepo = get<ChatRepository>()
             storageRepo.postMessageVoice(uri)
-                .onSuccess {
-                    val message = Message(
-                        sender = userDataStoreRepo.getUserData.first().id,
-                        message = it,
-                        isVoice = true,
-                        mediaDurationMillis = durationMillis,
-                        mediaSizeBytes = sizeBytes
-                    ).withReply(reply)
-                    chatRepo.sendMessage(chatId, message)
-                    showCompletionNotification(this@ImageLoadService, "Голосовое сообщение отправлено")
+                .onSuccess { url ->
+                    runCatching {
+                        val message = Message(
+                            id = metadata.messageId,
+                            sender = userDataStoreRepo.getUserData.first().id,
+                            message = url,
+                            isVoice = true,
+                            mediaDurationMillis = durationMillis,
+                            mediaSizeBytes = sizeBytes,
+                            sentAt = metadata.sentAt
+                        ).withReply(reply)
+                        chatRepo.sendMessage(chatId, message)
+                    }.onSuccess {
+                        showCompletionNotification(this@ImageLoadService, "Голосовое сообщение отправлено")
+                    }.onFailure {
+                        notifyMediaUploadFailed(metadata.messageId)
+                        Log.e("ImageLoadService", it.message.toString())
+                        showCompletionNotification(this@ImageLoadService, "Голосовое сообщение не отправлено")
+                    }
                     cleanupCacheFile(uri)
                     stopSelf()
                 }
                 .onFailure {
+                    notifyMediaUploadFailed(metadata.messageId)
+                    Log.e("ImageLoadService", it.message.toString())
                     showCompletionNotification(this@ImageLoadService, "Голосовое сообщение не отправлено")
                     cleanupCacheFile(uri)
                     stopSelf()
@@ -184,6 +219,12 @@ class ImageLoadService : Service() {
             text = getStringExtra("reply_to_text").orEmpty()
         )
 
+    private fun Intent.messageMetadata(): MessageMetadata =
+        MessageMetadata(
+            messageId = getStringExtra(ImageLoadServiceStarter.EXTRA_MESSAGE_ID).orEmpty(),
+            sentAt = getLongExtra(ImageLoadServiceStarter.EXTRA_SENT_AT, System.currentTimeMillis())
+        )
+
     private fun Message.withReply(reply: ReplyMetadata): Message =
         if (reply.messageId.isBlank()) {
             this
@@ -199,6 +240,20 @@ class ImageLoadService : Service() {
         if (uri.scheme != "file") return
         runCatching { File(uri.path.orEmpty()).delete() }
     }
+
+    private fun notifyMediaUploadFailed(messageId: String) {
+        if (messageId.isBlank()) return
+        sendBroadcast(
+            Intent(ImageLoadServiceStarter.ACTION_MEDIA_UPLOAD_FAILED)
+                .setPackage(packageName)
+                .putExtra(ImageLoadServiceStarter.EXTRA_MESSAGE_ID, messageId)
+        )
+    }
+
+    private data class MessageMetadata(
+        val messageId: String,
+        val sentAt: Long
+    )
 
     private data class ReplyMetadata(
         val messageId: String,

@@ -1,6 +1,5 @@
 package com.example.data.media.api
 
-import android.content.Context
 import android.net.Uri
 
 interface MediaRepository {

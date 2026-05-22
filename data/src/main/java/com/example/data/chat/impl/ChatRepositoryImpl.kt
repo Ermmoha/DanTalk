@@ -10,8 +10,8 @@ import com.example.data.chat.impl.mapper.toDomain
 import com.example.data.chat.impl.mapper.toEntity
 import com.example.data.user.api.model.UserData
 import com.google.firebase.firestore.DocumentReference
+import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FirebaseFirestore
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -33,15 +33,15 @@ internal class ChatRepositoryImpl(
                     return@addSnapshotListener
                 }
                 if (snapshot == null) return@addSnapshotListener
-                val chatEntities = snapshot.documents.mapNotNull {
-                    it.id to it.toObject(ChatEntity::class.java)
-                }.toMap()
-                CoroutineScope(Dispatchers.IO).launch {
+                val chatEntities = snapshot.documents.mapNotNull { document ->
+                    document.toObject(ChatEntity::class.java)?.let { document.id to it }
+                }
+                launch(Dispatchers.IO) {
                     val chats = chatEntities.map { entity ->
-                        entity.value?.toDomain(
-                            entity.key,
-                            getChatUsers(entity.value?.users ?: emptyList())
-                        ) ?: throw Exception("Failed to get chat")
+                        entity.second.toDomain(
+                            entity.first,
+                            getChatUsers(entity.second.users)
+                        )
                     }
                     trySend(chats)
                 }
@@ -100,13 +100,15 @@ internal class ChatRepositoryImpl(
         }
 
     override suspend fun sendMessage(chatId: String, message: Message) {
-        val docRef = firestore.collection("chats")
+        val messagesRef = firestore.collection("chats")
             .document(chatId)
             .collection("messages")
-            .add(message.toEntity())
-            .await()
 
-        docRef.update("pending", false).await()
+        val messageId = message.id.ifBlank { messagesRef.document().id }
+        messagesRef
+            .document(messageId)
+            .set(message.toEntity())
+            .await()
     }
 
     override suspend fun updateMessage(chatId: String, messageId: String, message: String) {
@@ -145,27 +147,35 @@ internal class ChatRepositoryImpl(
                     Log.d("Firestore", "Failed to get messages $e")
                     return@addSnapshotListener
                 }
-                val messages = snapshot?.documents?.mapNotNull {
-                    it.toObject(MessageEntity::class.java)?.toDomain(it.id)
-                }?.sortedBy { it.sentAt }?.reversed() ?: emptyList()
-                trySend(messages)
+                launch(Dispatchers.Default) {
+                    val messages = snapshot?.documents?.mapNotNull {
+                        it.toObject(MessageEntity::class.java)?.toDomain(it.id)
+                    }?.sortedByDescending { it.sentAt } ?: emptyList()
+                    trySend(messages)
+                }
             }
         awaitClose { listener.remove() }
     }
 
     override suspend fun readMessage(chatId: String, messageIds: List<String>) {
-        messageIds.forEach { messageId ->
-            runCatching {
-                firestore.collection("chats")
-                    .document(chatId)
-                    .collection("messages")
-                    .document(messageId)
-                    .update("read", true)
-                    .await()
-            }.onFailure {
-                Log.d("Firestore", "Failed to mark message as read $it")
+        messageIds
+            .distinct()
+            .chunked(450)
+            .forEach { chunk ->
+                runCatching {
+                    val batch = firestore.batch()
+                    chunk.forEach { messageId ->
+                        val reference = firestore.collection("chats")
+                            .document(chatId)
+                            .collection("messages")
+                            .document(messageId)
+                        batch.update(reference, "read", true)
+                    }
+                    batch.commit().await()
+                }.onFailure {
+                    Log.d("Firestore", "Failed to mark messages as read $it")
+                }
             }
-        }
     }
 
     override suspend fun getChatByUserIds(userIds: List<String>): Chat =
@@ -185,16 +195,26 @@ internal class ChatRepositoryImpl(
             throw e
         }
 
-    private suspend fun getChatUsers(refs: List<DocumentReference>): List<UserData> =
-        refs.map { ref ->
-            val snapshot = firestore.collection("users")
-                .document(ref.id)
-                .get()
-                .await()
-            snapshot.toObject(UserData::class.java)?.copy(id = snapshot.id)
+    private suspend fun getChatUsers(refs: List<DocumentReference>): List<UserData> {
+        if (refs.isEmpty()) return emptyList()
+
+        val users = refs
+            .distinctBy { it.id }
+            .chunked(10)
+            .flatMap { chunk ->
+                firestore.collection("users")
+                    .whereIn(FieldPath.documentId(), chunk.map { it.id })
+                    .get()
+                    .await()
+                    .documents
+            }
+            .associateBy { it.id }
+
+        return refs.map { ref ->
+            users[ref.id]?.toObject(UserData::class.java)?.copy(id = ref.id)
                 ?: throw Exception("Failed to get user")
         }
-
+    }
 
     private suspend fun getUserReference(userId: String): DocumentReference =
         firestore.collection("users")

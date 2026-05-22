@@ -14,7 +14,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Reply
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -36,7 +38,9 @@ import coil3.compose.AsyncImage
 fun PhotoViewerDialog(
     imageUrl: String,
     onDismissRequest: () -> Unit,
+    onReplyClick: (() -> Unit)? = null,
     onDownloadClick: (() -> Unit)? = null,
+    onDeleteClick: (() -> Unit)? = null,
 ) {
     var controlsVisible by remember { mutableStateOf(true) }
 
@@ -77,10 +81,30 @@ fun PhotoViewerDialog(
                     horizontalArrangement = Arrangement.spacedBy(2.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    if (onReplyClick != null) {
+                        IconButton(onClick = onReplyClick) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Outlined.Reply,
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp),
+                                tint = Color.White
+                            )
+                        }
+                    }
                     if (onDownloadClick != null) {
                         IconButton(onClick = onDownloadClick) {
                             Icon(
                                 imageVector = Icons.Outlined.Download,
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp),
+                                tint = Color.White
+                            )
+                        }
+                    }
+                    if (onDeleteClick != null) {
+                        IconButton(onClick = onDeleteClick) {
+                            Icon(
+                                imageVector = Icons.Outlined.Delete,
                                 contentDescription = null,
                                 modifier = Modifier.size(24.dp),
                                 tint = Color.White

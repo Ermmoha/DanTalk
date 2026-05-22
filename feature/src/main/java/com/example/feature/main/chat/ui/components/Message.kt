@@ -1,7 +1,6 @@
 package com.example.feature.main.chat.ui.components
 
 import android.media.MediaPlayer
-import android.util.Log
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
@@ -32,6 +31,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Mic
+import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -56,12 +56,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
 import coil3.compose.AsyncImagePainter
 import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
@@ -117,9 +119,11 @@ fun Message(
                         )
                         .combinedClickable(
                             onClick = {
-                                if (message.isPhoto) onPhotoClick(message)
+                                if (message.isPhoto && !message.isPending) onPhotoClick(message)
                             },
-                            onLongClick = { showActions = true }
+                            onLongClick = if (message.isPending) null else {
+                                { showActions = true }
+                            }
                         )
                         .background(
                             color = bubbleColor,
@@ -129,8 +133,7 @@ fun Message(
                 ) {
                     MessageBody(
                         message = message,
-                        contentColor = contentColor,
-                        onPhotoClick = { onPhotoClick(message) }
+                        contentColor = contentColor
                     )
                 }
                 MessageTail(
@@ -280,8 +283,7 @@ private fun MessageActionRow(
 @Composable
 private fun MessageBody(
     message: UiMessage,
-    contentColor: Color,
-    onPhotoClick: () -> Unit
+    contentColor: Color
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         if (message.replyToText.isNotBlank()) {
@@ -292,11 +294,18 @@ private fun MessageBody(
             )
         }
         when {
-            message.isPhoto -> MessagePhoto(message.message, contentColor, onPhotoClick)
+            message.isPhoto && message.isPending -> PendingPhoto(message.message, contentColor)
+            message.isPhoto -> MessagePhoto(message.message, contentColor)
+            message.isVoice && message.isPending -> PendingMediaRow(
+                icon = Icons.Outlined.Mic,
+                title = "Голосовое отправляется",
+                subtitle = formatDurationMillis(message.mediaDurationMillis.toInt()),
+                contentColor = contentColor
+            )
             message.isVoice -> VoiceMessage(message, contentColor)
             else -> Text(
                 text = message.message,
-                color = contentColor
+                color = if (message.isPending) contentColor.copy(alpha = 0.82f) else contentColor
             )
         }
     }
@@ -409,25 +418,26 @@ private fun MessageTail(
 @Composable
 private fun MessagePhoto(
     url: String,
-    contentColor: Color,
-    onClick: () -> Unit
+    contentColor: Color
 ) {
     var aspectRatio by remember { mutableFloatStateOf(1f) }
 
     val context = LocalContext.current
-    val request = ImageRequest.Builder(context)
-        .data(url)
-        .size(Size(720, 720))
-        .listener(
-            onSuccess = { _, result ->
-                val width = result.image.width
-                val height = result.image.height
-                if (width > 0 && height > 0) {
-                    aspectRatio = (width.toFloat() / height.toFloat()).coerceIn(0.65f, 1.6f)
+    val request = remember(context, url) {
+        ImageRequest.Builder(context)
+            .data(url)
+            .size(Size(720, 720))
+            .listener(
+                onSuccess = { _, result ->
+                    val width = result.image.width
+                    val height = result.image.height
+                    if (width > 0 && height > 0) {
+                        aspectRatio = (width.toFloat() / height.toFloat()).coerceIn(0.65f, 1.6f)
+                    }
                 }
-            }
-        )
-        .build()
+            )
+            .build()
+    }
 
     val painter = rememberAsyncImagePainter(request)
     val state by painter.state.collectAsState()
@@ -436,8 +446,7 @@ private fun MessagePhoto(
         modifier = Modifier
             .widthIn(max = 240.dp)
             .aspectRatio(aspectRatio)
-            .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick),
+            .clip(RoundedCornerShape(12.dp)),
         contentAlignment = Alignment.Center
     ) {
         when (state) {
@@ -464,9 +473,84 @@ private fun MessagePhoto(
                 )
             }
 
-            is AsyncImagePainter.State.Empty -> {
-                Log.d("MessagePhoto", "Empty")
-            }
+            is AsyncImagePainter.State.Empty -> Unit
+        }
+    }
+}
+
+@Composable
+private fun PendingPhoto(
+    uri: String,
+    contentColor: Color
+) {
+    Box(
+        modifier = Modifier
+            .widthIn(max = 240.dp)
+            .aspectRatio(1f)
+            .clip(RoundedCornerShape(12.dp))
+            .background(contentColor.copy(alpha = 0.14f)),
+        contentAlignment = Alignment.Center
+    ) {
+        if (uri.isNotBlank()) {
+            AsyncImage(
+                model = uri,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.38f))
+            )
+        }
+        PendingMediaRow(
+            icon = Icons.Outlined.PhotoLibrary,
+            title = "Фото отправляется",
+            subtitle = "Загрузка",
+            contentColor = Color.White
+        )
+    }
+}
+
+@Composable
+private fun PendingMediaRow(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    contentColor: Color
+) {
+    Row(
+        modifier = Modifier.widthIn(min = 190.dp, max = 240.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        CircularProgressIndicator(
+            color = contentColor,
+            modifier = Modifier.size(24.dp),
+            strokeWidth = 2.dp
+        )
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = contentColor.copy(alpha = 0.85f),
+            modifier = Modifier.size(18.dp)
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                color = contentColor,
+                fontSize = 14.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = subtitle,
+                color = contentColor.copy(alpha = 0.75f),
+                fontSize = 12.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }

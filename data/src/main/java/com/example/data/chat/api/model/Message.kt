@@ -5,7 +5,7 @@ data class Message(
     val sender: String = "",
     val message: String = "",
     val read: Boolean = false,
-    val isPending: Boolean = true,
+    val isPending: Boolean = false,
     val isEdited: Boolean = false,
     val isPhoto: Boolean = false,
     val isVoice: Boolean = false,

@@ -4,7 +4,7 @@ internal data class MessageEntity(
     val sender: String = "",
     val message: String = "",
     val read: Boolean = false,
-    val pending: Boolean = true,
+    val pending: Boolean = false,
     val edited: Boolean = false,
     val photo: Boolean = false,
     val voice: Boolean = false,

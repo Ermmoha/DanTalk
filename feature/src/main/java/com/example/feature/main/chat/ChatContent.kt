@@ -1,7 +1,10 @@
 package com.example.feature.main.chat
 
 import android.Manifest
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.media.MediaRecorder
 import android.net.Uri
@@ -30,12 +33,15 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.PhotoLibrary
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -60,6 +66,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import coil3.compose.AsyncImage
+import com.example.background.service.ImageLoadServiceStarter
 import com.example.core.design.theme.DanTalkTheme
 import com.example.core.ui.components.PhotoViewerDialog
 import com.example.core.ui.components.UserDialogInfo
@@ -106,13 +113,14 @@ private fun Content(
     var isUserDialogVisible by remember { mutableStateOf(false) }
     var isAttachmentsVisible by remember { mutableStateOf(false) }
     var selectedPhoto by remember { mutableStateOf<UiMessage?>(null) }
+    var photoToDelete by remember { mutableStateOf<UiMessage?>(null) }
 
     val photoMessages by remember(state.messages) {
         derivedStateOf {
             state.messages
                 .filterIsInstance<MessageListItem.MessageItem>()
                 .map { it.message }
-                .filter { it.isPhoto }
+                .filter { it.isPhoto && !it.isPending }
         }
     }
 
@@ -188,6 +196,27 @@ private fun Content(
         onDispose {
             recorder?.release()
             recordedFile?.delete()
+        }
+    }
+
+    DisposableEffect(context) {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                if (intent?.action != ImageLoadServiceStarter.ACTION_MEDIA_UPLOAD_FAILED) return
+                val messageId = intent.getStringExtra(ImageLoadServiceStarter.EXTRA_MESSAGE_ID).orEmpty()
+                if (messageId.isNotBlank()) {
+                    onIntent(ChatStore.Intent.MediaUploadFailed(messageId))
+                }
+            }
+        }
+        ContextCompat.registerReceiver(
+            context,
+            receiver,
+            IntentFilter(ImageLoadServiceStarter.ACTION_MEDIA_UPLOAD_FAILED),
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+        onDispose {
+            runCatching { context.unregisterReceiver(receiver) }
         }
     }
 
@@ -269,9 +298,53 @@ private fun Content(
         PhotoViewerDialog(
             imageUrl = photo.message,
             onDismissRequest = { selectedPhoto = null },
+            onReplyClick = {
+                onIntent(ChatStore.Intent.StartReplyMessage(photo))
+                selectedPhoto = null
+            },
             onDownloadClick = {
                 onIntent(ChatStore.Intent.DownloadImage(context = context, url = photo.message))
+            },
+            onDeleteClick = if (photo.isCurrentUserMessage) {
+                { photoToDelete = photo }
+            } else {
+                null
             }
+        )
+    }
+
+    photoToDelete?.let { photo ->
+        AlertDialog(
+            onDismissRequest = { photoToDelete = null },
+            title = { Text("Удалить сообщение?") },
+            text = { Text("Сообщение исчезнет из этого чата.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onIntent(ChatStore.Intent.DeleteMessage(photo.id))
+                        if (selectedPhoto?.id == photo.id) selectedPhoto = null
+                        photoToDelete = null
+                    }
+                ) {
+                    Text(
+                        text = "Удалить",
+                        color = DanTalkTheme.colors.red
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { photoToDelete = null },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = DanTalkTheme.colors.main
+                    )
+                ) {
+                    Text("Отмена")
+                }
+            },
+            containerColor = DanTalkTheme.colors.singleTheme,
+            titleContentColor = DanTalkTheme.colors.oppositeTheme,
+            textContentColor = DanTalkTheme.colors.hint
         )
     }
 

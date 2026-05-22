@@ -6,7 +6,6 @@ import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
 import com.example.data.media.api.MediaRepository
-import java.io.OutputStream
 
 class MediaRepositoryImpl(
     private val context: Context
