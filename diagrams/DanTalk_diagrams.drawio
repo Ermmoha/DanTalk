@@ -1,0 +1,42 @@
+﻿<mxfile host="app.diagrams.net">
+  <diagram name="Use Case DanTalk">
+    <mxGraphModel dx="1100" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="actor" value="Пользователь" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" vertex="1" parent="1"><mxGeometry x="70" y="180" width="50" height="90" as="geometry"/></mxCell>
+        <mxCell id="system" value="DanTalk" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#0394C5;fillColor=#E8F8FF;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="210" y="70" width="760" height="520" as="geometry"/></mxCell>
+        <mxCell id="u1" value="Регистрация и вход" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#0394C5;" vertex="1" parent="1"><mxGeometry x="320" y="130" width="190" height="60" as="geometry"/></mxCell>
+        <mxCell id="u2" value="Поиск собеседника" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#0394C5;" vertex="1" parent="1"><mxGeometry x="610" y="130" width="190" height="60" as="geometry"/></mxCell>
+        <mxCell id="u3" value="Отправка сообщений" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#0394C5;" vertex="1" parent="1"><mxGeometry x="320" y="260" width="190" height="60" as="geometry"/></mxCell>
+        <mxCell id="u4" value="Фото и голос" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#0394C5;" vertex="1" parent="1"><mxGeometry x="610" y="260" width="190" height="60" as="geometry"/></mxCell>
+        <mxCell id="u5" value="Ответ, редактирование, удаление" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#0394C5;" vertex="1" parent="1"><mxGeometry x="320" y="390" width="220" height="70" as="geometry"/></mxCell>
+        <mxCell id="u6" value="Вложения и уведомления" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#0394C5;" vertex="1" parent="1"><mxGeometry x="610" y="390" width="210" height="70" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram name="ER DanTalk">
+    <mxGraphModel dx="1100" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="users" value="users&#xa;id&#xa;email&#xa;username&#xa;avatar" style="swimlane;whiteSpace=wrap;html=1;fillColor=#E8F8FF;strokeColor=#0394C5;" vertex="1" parent="1"><mxGeometry x="120" y="100" width="220" height="170" as="geometry"/></mxCell>
+        <mxCell id="chats" value="chats&#xa;chatId&#xa;users[]&#xa;updatedAt" style="swimlane;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0394C5;" vertex="1" parent="1"><mxGeometry x="450" y="100" width="220" height="170" as="geometry"/></mxCell>
+        <mxCell id="messages" value="messages&#xa;sender&#xa;message&#xa;sentAt&#xa;replyTo..." style="swimlane;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0394C5;" vertex="1" parent="1"><mxGeometry x="780" y="100" width="240" height="190" as="geometry"/></mxCell>
+        <mxCell id="media" value="Supabase media&#xa;publicUrl&#xa;type&#xa;size&#xa;duration" style="swimlane;whiteSpace=wrap;html=1;fillColor=#E8F8FF;strokeColor=#0394C5;" vertex="1" parent="1"><mxGeometry x="450" y="380" width="240" height="180" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram name="Components DanTalk">
+    <mxGraphModel dx="1100" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="app" value="app&#xa;MainActivity" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F8FF;strokeColor=#0394C5;" vertex="1" parent="1"><mxGeometry x="80" y="120" width="180" height="100" as="geometry"/></mxCell>
+        <mxCell id="feature" value="feature&#xa;Compose UI&#xa;Decompose&#xa;MVIKotlin" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0394C5;" vertex="1" parent="1"><mxGeometry x="330" y="90" width="220" height="150" as="geometry"/></mxCell>
+        <mxCell id="data" value="data&#xa;Repositories&#xa;Firebase&#xa;Supabase" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0394C5;" vertex="1" parent="1"><mxGeometry x="620" y="90" width="220" height="150" as="geometry"/></mxCell>
+        <mxCell id="bg" value="background&#xa;FCM service&#xa;Sync worker" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F8FF;strokeColor=#0394C5;" vertex="1" parent="1"><mxGeometry x="900" y="120" width="190" height="120" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
