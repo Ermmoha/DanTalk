@@ -19,7 +19,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.outlined.ContentCopy
-import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -30,7 +29,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
@@ -39,7 +37,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import coil3.compose.AsyncImage
 import com.example.core.design.theme.DanTalkTheme
 import com.example.core.ui.model.UiUserData
 
@@ -51,6 +48,8 @@ fun UserDialogInfo(
     onDownloadButtonClick: () -> Unit,
     user: UiUserData,
 ) {
+    val hasAvatar = user.avatar.isNotBlank()
+
     Dialog(
         onDismissRequest = onDismissRequest
     ) {
@@ -64,9 +63,9 @@ fun UserDialogInfo(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Box {
-                AsyncImage(
+                AvatarImage(
                     model = user.avatar,
-                    contentDescription = null,
+                    name = user.username,
                     modifier = Modifier
                         .fillMaxWidth()
                         .aspectRatio(4f / 3f)
@@ -79,18 +78,22 @@ fun UserDialogInfo(
                             layout(placeable.width, placeable.height) {
                                 placeable.place(0, 0)
                             }
-                        }
-                        .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)),
-                    contentScale = ContentScale.Crop
+                        },
+                    contentScale = ContentScale.Crop,
+                    shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+                    placeholderIconSize = 56.dp,
+                    initialsFontSize = 32.sp
                 )
-                IconButtonWithElevation(
-                    onClick = { onDownloadButtonClick() },
-                    modifier = Modifier.align(Alignment.TopEnd),
-                    colors = IconButtonDefaults.iconButtonColors(
-                        contentColor = Color.White
-                    ),
-                    icon = Icons.Default.Download
-                )
+                if (hasAvatar) {
+                    IconButtonWithElevation(
+                        onClick = { onDownloadButtonClick() },
+                        modifier = Modifier.align(Alignment.TopEnd),
+                        colors = IconButtonDefaults.iconButtonColors(
+                            contentColor = Color.White
+                        ),
+                        icon = Icons.Default.Download
+                    )
+                }
             }
             DialogUserInfoItem(
                 title = "Полное имя",

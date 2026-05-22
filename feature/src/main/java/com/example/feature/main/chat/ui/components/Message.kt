@@ -33,6 +33,7 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -232,7 +233,12 @@ fun Message(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
+                TextButton(
+                    onClick = { showDeleteDialog = false },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = DanTalkTheme.colors.main
+                    )
+                ) {
                     Text("Отмена")
                 }
             },
@@ -411,13 +417,13 @@ private fun MessagePhoto(
     val context = LocalContext.current
     val request = ImageRequest.Builder(context)
         .data(url)
-        .size(Size.ORIGINAL)
+        .size(Size(720, 720))
         .listener(
             onSuccess = { _, result ->
                 val width = result.image.width
                 val height = result.image.height
                 if (width > 0 && height > 0) {
-                    aspectRatio = width.toFloat() / height.toFloat()
+                    aspectRatio = (width.toFloat() / height.toFloat()).coerceIn(0.65f, 1.6f)
                 }
             }
         )
@@ -471,29 +477,48 @@ private fun VoiceMessage(
     contentColor: Color
 ) {
     var isPrepared by remember(message.message) { mutableStateOf(false) }
+    var isPreparing by remember(message.message) { mutableStateOf(false) }
     var isPlaying by remember(message.message) { mutableStateOf(false) }
+    var player by remember(message.message) { mutableStateOf<MediaPlayer?>(null) }
     var durationMillis by remember(message.message) {
         mutableIntStateOf(message.mediaDurationMillis.toInt())
     }
 
-    val player = remember(message.message) {
+    fun prepareAndPlay() {
+        if (isPreparing) return
+        isPreparing = true
         runCatching {
             MediaPlayer().apply {
                 setDataSource(message.message)
                 setOnPreparedListener {
                     isPrepared = true
+                    isPreparing = false
                     if (durationMillis <= 0) durationMillis = it.duration
+                    it.start()
+                    isPlaying = true
                 }
                 setOnCompletionListener {
                     isPlaying = false
                     runCatching { seekTo(0) }
                 }
+                setOnErrorListener { mediaPlayer, _, _ ->
+                    isPreparing = false
+                    isPrepared = false
+                    isPlaying = false
+                    runCatching { mediaPlayer.release() }
+                    if (player === mediaPlayer) player = null
+                    true
+                }
                 prepareAsync()
             }
-        }.getOrNull()
+        }.onSuccess {
+            player = it
+        }.onFailure {
+            isPreparing = false
+        }
     }
 
-    DisposableEffect(player) {
+    DisposableEffect(message.message) {
         onDispose {
             player?.release()
         }
@@ -505,15 +530,17 @@ private fun VoiceMessage(
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         IconButton(
-            enabled = isPrepared && player != null,
+            enabled = !isPreparing || isPrepared,
             onClick = {
-                val currentPlayer = player ?: return@IconButton
-                if (isPlaying) {
+                val currentPlayer = player
+                if (isPlaying && currentPlayer != null) {
                     currentPlayer.pause()
                     isPlaying = false
-                } else {
+                } else if (isPrepared && currentPlayer != null) {
                     currentPlayer.start()
                     isPlaying = true
+                } else {
+                    prepareAndPlay()
                 }
             },
             colors = IconButtonDefaults.iconButtonColors(
@@ -521,10 +548,18 @@ private fun VoiceMessage(
                 disabledContentColor = contentColor.copy(alpha = 0.45f)
             )
         ) {
-            Icon(
-                imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                contentDescription = null
-            )
+            if (isPreparing) {
+                CircularProgressIndicator(
+                    color = contentColor,
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Icon(
+                    imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                    contentDescription = null
+                )
+            }
         }
         Icon(
             imageVector = Icons.Outlined.Mic,

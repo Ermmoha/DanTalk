@@ -29,13 +29,10 @@ import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -54,7 +51,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -62,11 +58,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import coil3.compose.AsyncImage
 import com.example.core.design.theme.DanTalkTheme
+import com.example.core.ui.components.PhotoViewerDialog
 import com.example.core.ui.components.UserDialogInfo
 import com.example.core.ui.model.UiMessage
 import com.example.feature.main.chat.component.ChatComponent
@@ -271,10 +266,10 @@ private fun Content(
     }
 
     selectedPhoto?.let { photo ->
-        PhotoViewer(
-            photo = photo,
-            onDismiss = { selectedPhoto = null },
-            onDownload = {
+        PhotoViewerDialog(
+            imageUrl = photo.message,
+            onDismissRequest = { selectedPhoto = null },
+            onDownloadClick = {
                 onIntent(ChatStore.Intent.DownloadImage(context = context, url = photo.message))
             }
         )
@@ -472,53 +467,6 @@ private fun AttachmentsSheet(
                             .background(DanTalkTheme.colors.altSingleTheme, RoundedCornerShape(8.dp))
                             .clickable { onPhotoClick(photo) },
                         contentScale = ContentScale.Crop
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun PhotoViewer(
-    photo: UiMessage,
-    onDismiss: () -> Unit,
-    onDownload: () -> Unit
-) {
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black),
-            contentAlignment = Alignment.Center
-        ) {
-            AsyncImage(
-                model = photo.message,
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Fit
-            )
-            Row(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(12.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                IconButton(onClick = onDownload) {
-                    Icon(
-                        imageVector = Icons.Outlined.Download,
-                        contentDescription = null,
-                        tint = Color.White
-                    )
-                }
-                IconButton(onClick = onDismiss) {
-                    Icon(
-                        imageVector = Icons.Outlined.Close,
-                        contentDescription = null,
-                        tint = Color.White
                     )
                 }
             }

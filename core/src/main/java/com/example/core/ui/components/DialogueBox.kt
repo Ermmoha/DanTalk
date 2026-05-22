@@ -31,7 +31,7 @@ fun DialogueBox(
         Column(
             modifier = Modifier
                 .clip(RoundedCornerShape(22.dp))
-                .background(DanTalkTheme.colors.altSingleTheme)
+                .background(DanTalkTheme.colors.singleTheme)
                 .fillMaxWidth()
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),

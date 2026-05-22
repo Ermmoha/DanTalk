@@ -2,7 +2,6 @@ package com.example.feature.main.profile
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,10 +41,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -55,10 +54,10 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil3.compose.AsyncImage
 import com.example.core.design.theme.DanTalkTheme
 import com.example.core.network_observer.ConnectionState
 import com.example.core.network_observer.connectionState
+import com.example.core.ui.components.AvatarImage
 import com.example.core.ui.components.NoInternetConnection
 import com.example.core.ui.components.snackbar.CustomSnackbarHost
 import com.example.core.ui.components.topbar.ExtraTopBar
@@ -240,20 +239,19 @@ private fun ProfileAvatar(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(6.dp)
     ) {
-        AsyncImage(
+        AvatarImage(
             model = user.avatar,
-            contentDescription = null,
+            name = user.username,
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(1f),
+            shape = RectangleShape,
             contentScale = ContentScale.Crop,
+            placeholderIconSize = 74.dp,
+            initialsFontSize = 38.sp,
             colorFilter = ColorFilter.tint(
-                color = if (isSystemInDarkTheme())
-                    Color(211, 211, 211, 255)
-                else
-                    Color.White,
+                color = Color(211, 211, 211, 255),
                 blendMode = BlendMode.Darken
             )
         )

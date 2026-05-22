@@ -1,6 +1,5 @@
 package com.example.feature.main.settings
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -10,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Info
@@ -34,15 +32,13 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil3.compose.AsyncImage
 import com.example.core.design.AppTheme
 import com.example.core.design.theme.DanTalkTheme
+import com.example.core.ui.components.AvatarImage
 import com.example.feature.main.settings.component.SettingsComponent
 import com.example.feature.main.settings.store.SettingsStore
 import com.example.feature.main.settings.ui.components.SettingsTopBar
@@ -60,7 +56,7 @@ fun SettingsContent(
                 navigateBack = { component.onIntent(SettingsStore.Intent.NavigateBack) }
             )
         },
-        containerColor = DanTalkTheme.colors.singleTheme
+        containerColor = DanTalkTheme.colors.altSingleTheme
     ) { contentPadding ->
         LazyColumn(
             modifier = Modifier
@@ -118,7 +114,7 @@ fun SettingsContent(
 private fun Header(
     state: SettingsStore.State
 ) {
-    SettingsCard(containerColor = DanTalkTheme.colors.altSingleTheme) {
+    SettingsCard {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -126,14 +122,11 @@ private fun Header(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            AsyncImage(
+            AvatarImage(
                 model = state.user.avatar,
-                contentDescription = null,
+                name = state.user.username,
                 modifier = Modifier
                     .size(54.dp)
-                    .clip(CircleShape)
-                    .background(DanTalkTheme.colors.spacer, CircleShape),
-                contentScale = ContentScale.Crop
             )
             Column(
                 verticalArrangement = Arrangement.spacedBy(2.dp)
@@ -174,7 +167,7 @@ private fun ThemeCard(
                 icon = Icons.Outlined.Palette,
                 title = "Тема"
             )
-            HorizontalDivider(color = DanTalkTheme.colors.main.copy(alpha = 0.18f))
+            HorizontalDivider(color = DanTalkTheme.colors.spacer)
             items.forEach { (theme, title) ->
                 Row(
                     modifier = Modifier
@@ -225,7 +218,7 @@ private fun NotificationCard(
                 checked = enabled,
                 onCheckedChange = onEnabledChange
             )
-            HorizontalDivider(color = DanTalkTheme.colors.main.copy(alpha = 0.18f))
+            HorizontalDivider(color = DanTalkTheme.colors.spacer)
             SettingSwitchRow(
                 icon = Icons.Outlined.Visibility,
                 title = "Содержимое сообщений",
@@ -298,11 +291,11 @@ private fun SettingSwitchRow(
                 checkedThumbColor = Color.White,
                 checkedTrackColor = DanTalkTheme.colors.main,
                 uncheckedThumbColor = DanTalkTheme.colors.hint,
-                uncheckedTrackColor = DanTalkTheme.colors.main.copy(alpha = 0.18f),
+                uncheckedTrackColor = DanTalkTheme.colors.altSingleTheme,
                 disabledCheckedThumbColor = Color.White.copy(alpha = 0.7f),
                 disabledCheckedTrackColor = DanTalkTheme.colors.main.copy(alpha = 0.35f),
                 disabledUncheckedThumbColor = DanTalkTheme.colors.hint.copy(alpha = 0.6f),
-                disabledUncheckedTrackColor = DanTalkTheme.colors.main.copy(alpha = 0.1f)
+                disabledUncheckedTrackColor = DanTalkTheme.colors.altSingleTheme.copy(alpha = 0.7f)
             )
         )
     }
@@ -372,7 +365,7 @@ private fun SectionTitle(
 @Composable
 private fun SettingsCard(
     modifier: Modifier = Modifier,
-    containerColor: Color = DanTalkTheme.colors.main.copy(alpha = 0.08f),
+    containerColor: Color = DanTalkTheme.colors.singleTheme,
     content: @Composable () -> Unit
 ) {
     Card(

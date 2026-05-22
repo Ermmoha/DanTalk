@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -37,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.example.core.design.theme.DanTalkTheme
+import com.example.core.ui.components.AvatarImage
 import com.example.core.ui.model.UiChat
 import com.example.core.ui.model.UiMessage
 import com.example.core.util.toDateString
@@ -61,13 +61,11 @@ fun ChatItem(
                 .padding(horizontal = 10.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            AsyncImage(
+            AvatarImage(
                 model = chat.user.avatar,
-                contentDescription = null,
+                name = chat.user.username,
                 modifier = Modifier
                     .size(60.dp)
-                    .clip(CircleShape),
-                contentScale = ContentScale.Crop
             )
             Column(
                 modifier = Modifier.fillMaxWidth(),

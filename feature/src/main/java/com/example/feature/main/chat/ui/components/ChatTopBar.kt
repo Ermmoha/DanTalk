@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowLeft
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -15,11 +14,10 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil3.compose.AsyncImage
 import com.example.core.design.theme.DanTalkTheme
+import com.example.core.ui.components.AvatarImage
 import com.example.core.ui.model.UiUserData
 import com.valentinilk.shimmer.shimmer
 
@@ -61,10 +59,12 @@ fun ChatTopBar(
                 onClick = onAvatarClick
             ) {
                 if (user != null)
-                    AsyncImage(
+                    AvatarImage(
                         model = user.avatar,
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop
+                        name = user.username,
+                        modifier = Modifier.size(36.dp),
+                        placeholderIconSize = 20.dp,
+                        initialsFontSize = 14.sp
                     )
             }
         },

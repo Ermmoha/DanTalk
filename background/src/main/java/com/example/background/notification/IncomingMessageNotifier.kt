@@ -4,6 +4,7 @@ import android.content.Context
 import com.example.background.service.notification.showIncomingMessageNotification
 import com.example.data.settings.api.AppSettingsRepository
 import com.example.data.user.api.UserDataStoreRepository
+import com.google.firebase.firestore.DocumentChange
 import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
@@ -24,6 +25,7 @@ class IncomingMessageNotifier(
     private var chatsListener: ListenerRegistration? = null
     private val chatMessageListeners = mutableMapOf<String, ListenerRegistration>()
     private val lastMessageByChat = mutableMapOf<String, String>()
+    private val lastMessageSentAtByChat = mutableMapOf<String, Long>()
     private val initializedChats = mutableSetOf<String>()
     private val usernames = mutableMapOf<String, String>()
 
@@ -67,6 +69,7 @@ class IncomingMessageNotifier(
                 removed.forEach { chatId ->
                     chatMessageListeners.remove(chatId)?.remove()
                     lastMessageByChat.remove(chatId)
+                    lastMessageSentAtByChat.remove(chatId)
                     initializedChats.remove(chatId)
                 }
 
@@ -119,17 +122,44 @@ class IncomingMessageNotifier(
             .orderBy("sentAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
             .limit(1)
             .addSnapshotListener { snapshot, _ ->
-                val messageDoc = snapshot?.documents?.firstOrNull() ?: return@addSnapshotListener
+                if (snapshot == null) return@addSnapshotListener
+
+                val messageDoc = snapshot.documents.firstOrNull()
+                if (messageDoc == null) {
+                    initializedChats.add(chatId)
+                    lastMessageByChat.remove(chatId)
+                    return@addSnapshotListener
+                }
+
                 val messageId = messageDoc.id
+                val sentAt = messageDoc.getLong("sentAt") ?: 0L
 
                 if (!initializedChats.contains(chatId)) {
                     initializedChats.add(chatId)
                     lastMessageByChat[chatId] = messageId
+                    lastMessageSentAtByChat[chatId] = sentAt
                     return@addSnapshotListener
                 }
 
                 if (lastMessageByChat[chatId] == messageId) return@addSnapshotListener
+                val previousSentAt = lastMessageSentAtByChat[chatId] ?: 0L
+
+                if (sentAt <= previousSentAt) {
+                    lastMessageByChat[chatId] = messageId
+                    return@addSnapshotListener
+                }
+
+                val isNewLatestMessage = snapshot.documentChanges.any { change ->
+                    change.type == DocumentChange.Type.ADDED && change.document.id == messageId
+                }
+                if (!isNewLatestMessage) {
+                    lastMessageByChat[chatId] = messageId
+                    lastMessageSentAtByChat[chatId] = sentAt
+                    return@addSnapshotListener
+                }
+
                 lastMessageByChat[chatId] = messageId
+                lastMessageSentAtByChat[chatId] = sentAt
 
                 val senderId = messageDoc.getString("sender").orEmpty()
                 if (senderId == currentUserId) return@addSnapshotListener
@@ -167,6 +197,7 @@ class IncomingMessageNotifier(
         chatMessageListeners.values.forEach { it.remove() }
         chatMessageListeners.clear()
         lastMessageByChat.clear()
+        lastMessageSentAtByChat.clear()
         initializedChats.clear()
     }
 

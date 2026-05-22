@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.Scaffold
@@ -29,19 +28,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import coil3.compose.AsyncImage
 import com.example.core.design.AppTheme
 import com.example.core.design.theme.DanTalkTheme
 import com.example.core.network_observer.ConnectionState
 import com.example.core.network_observer.connectionState
+import com.example.core.ui.components.AvatarImage
 import com.example.core.ui.components.ItemShimmer
 import com.example.core.ui.components.NoInternetConnection
 import com.example.core.ui.components.chat.AnimatedChatItem
@@ -198,7 +195,7 @@ private fun ChatDeleteConfirmDialog(
         Column(
             modifier = Modifier
                 .background(
-                    DanTalkTheme.colors.altSingleTheme,
+                    DanTalkTheme.colors.singleTheme,
                     RoundedCornerShape(16.dp)
                 )
                 .padding(18.dp),
@@ -210,13 +207,13 @@ private fun ChatDeleteConfirmDialog(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                AsyncImage(
+                AvatarImage(
                     model = user.avatar,
-                    contentDescription = null,
+                    name = user.username,
                     modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape),
-                    contentScale = ContentScale.Crop
+                        .size(40.dp),
+                    placeholderIconSize = 22.dp,
+                    initialsFontSize = 14.sp
                 )
                 Text(
                     text = "Удалить чат с ${user.username}?",

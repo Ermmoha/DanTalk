@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.filled.DarkMode
@@ -34,17 +33,15 @@ import androidx.compose.material3.OutlinedIconToggleButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil3.compose.AsyncImage
 import com.example.core.design.AppTheme
 import com.example.core.design.theme.DanTalkTheme
+import com.example.core.ui.components.AvatarImage
 import com.example.core.ui.model.UiUserData
 
 @Composable
@@ -140,13 +137,13 @@ private fun NavDrawerHeader(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            AsyncImage(
+            AvatarImage(
                 model = user.avatar,
-                contentDescription = null,
+                name = user.username,
                 modifier = Modifier
-                    .size(70.dp)
-                    .clip(CircleShape),
-                contentScale = ContentScale.Crop
+                    .size(70.dp),
+                placeholderIconSize = 34.dp,
+                initialsFontSize = 22.sp
             )
             IconButton(
                 onClick = {

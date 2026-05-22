@@ -36,17 +36,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil3.compose.AsyncImage
 import com.example.core.design.theme.DanTalkTheme
 import com.example.core.network_observer.ConnectionState
 import com.example.core.network_observer.connectionState
+import com.example.core.ui.components.AvatarImage
 import com.example.core.ui.components.ItemShimmer
 import com.example.core.ui.components.NoInternetConnection
 import com.example.core.ui.components.UserDialogInfo
@@ -258,14 +257,11 @@ private fun UserItem(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                AsyncImage(
+                AvatarImage(
                     model = userData.avatar,
-                    contentDescription = null,
+                    name = userData.username,
                     modifier = Modifier
                         .size(60.dp)
-                        .clip(CircleShape)
-                        .background(DanTalkTheme.colors.spacer, CircleShape),
-                    contentScale = ContentScale.Crop
                 )
                 Column(
                     modifier = Modifier.weight(1f),
