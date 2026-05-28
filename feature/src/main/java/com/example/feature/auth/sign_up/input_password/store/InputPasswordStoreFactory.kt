@@ -12,6 +12,7 @@ import com.example.data.user.api.model.UserData
 import com.example.feature.auth.sign_up.input_password.store.InputPasswordStore.Intent
 import com.example.feature.auth.sign_up.input_password.store.InputPasswordStore.Label
 import com.example.feature.auth.sign_up.input_password.store.InputPasswordStore.State
+import com.example.feature.auth.sign_up.input_password.util.InputPasswordValidator
 import com.example.feature.auth.sign_up.input_password.util.InputPasswordValidation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -63,7 +64,7 @@ class InputPasswordStoreFactory(
             ) {}
 
     private fun CoroutineExecutorScope<State, Msg, Nothing, Nothing>.signUp() {
-        validatePassword(state().password, state().repeatablePassword)
+        InputPasswordValidator.validate(state().password, state().repeatablePassword)
             .let {
                 dispatch(Msg.UpdateValidation(it))
                 if (it != InputPasswordValidation.Valid) return
@@ -87,16 +88,6 @@ class InputPasswordStoreFactory(
             }
         }
     }
-
-    private fun validatePassword(
-        password: String,
-        repeatablePassword: String,
-    ): InputPasswordValidation =
-        when {
-            password.isBlank() -> InputPasswordValidation.EmptyPassword
-            password != repeatablePassword -> InputPasswordValidation.NotMatchesPasswords
-            else -> InputPasswordValidation.Valid
-        }
 
     private suspend fun saveUserData(userId: String) = withContext(Dispatchers.IO) {
         val userData = currentUserData.copy(id = userId)

@@ -12,9 +12,11 @@ import com.example.core.ui.model.UiChat
 import com.example.core.ui.model.UiMessage
 import com.example.core.util.toDateString
 import com.example.data.chat.api.ChatRepository
-import com.example.data.chat.api.model.Message
 import com.example.data.user.api.model.UserData
+import com.example.feature.main.chat.model.MessageActionStateReducer
+import com.example.feature.main.chat.model.MessageDraftFactory
 import com.example.feature.main.chat.model.MessageListItem
+import com.example.feature.main.chat.model.ReplyMetadata
 import com.example.feature.main.chat.store.ChatStore.Intent
 import com.example.feature.main.chat.store.ChatStore.Label
 import com.example.feature.main.chat.store.ChatStore.State
@@ -156,17 +158,14 @@ class ChatStoreFactory(
                             editingMessageId = null,
                             replyingToMessage = null
                         )
-                        is Msg.StartEditMessage -> copy(
-                            editingMessageId = msg.messageId,
-                            currentMessage = msg.message,
-                            replyingToMessage = null
+                        is Msg.StartEditMessage -> MessageActionStateReducer.startEdit(
+                            this,
+                            msg.messageId,
+                            msg.message
                         )
-                        is Msg.CancelEditMessage -> copy(editingMessageId = null, currentMessage = "")
-                        is Msg.StartReplyMessage -> copy(
-                            editingMessageId = null,
-                            replyingToMessage = msg.message
-                        )
-                        is Msg.CancelReplyMessage -> copy(replyingToMessage = null)
+                        is Msg.CancelEditMessage -> MessageActionStateReducer.cancelEdit(this)
+                        is Msg.StartReplyMessage -> MessageActionStateReducer.startReply(this, msg.message)
+                        is Msg.CancelReplyMessage -> MessageActionStateReducer.cancelReply(this)
                         is Msg.SetUser -> copy(currentUser = msg.user)
                     }
                 }
@@ -203,13 +202,11 @@ class ChatStoreFactory(
             return
         }
 
-        val message = Message(
+        val message = MessageDraftFactory.textMessage(
             id = Uuid.random().toString(),
-            sender = currentUserId,
-            message = messageText,
-            replyToMessageId = reply.messageId,
-            replyToSender = reply.sender,
-            replyToText = reply.text
+            senderId = currentUserId,
+            text = messageText,
+            reply = reply
         )
         dispatch(Msg.AddPendingMessage(message.copy(isPending = true).toUi(currentUserId)))
 
@@ -283,18 +280,15 @@ class ChatStoreFactory(
         sizeBytes: Long = 0L
     ): UiMessage {
         val reply = replyMetadata()
-        val message = Message(
+        val message = MessageDraftFactory.mediaMessage(
             id = Uuid.random().toString(),
-            sender = currentUser.id,
-            message = content,
-            isPending = true,
+            senderId = currentUser.id,
+            content = content,
             isPhoto = isPhoto,
             isVoice = isVoice,
-            mediaDurationMillis = durationMillis,
-            mediaSizeBytes = sizeBytes,
-            replyToMessageId = reply.messageId,
-            replyToSender = reply.sender,
-            replyToText = reply.text
+            durationMillis = durationMillis,
+            sizeBytes = sizeBytes,
+            reply = reply
         )
         return message.toUi(currentUser.id)
     }
@@ -319,9 +313,4 @@ class ChatStoreFactory(
             else -> message
         }
 
-    private data class ReplyMetadata(
-        val messageId: String = "",
-        val sender: String = "",
-        val text: String = ""
-    )
 }

@@ -1,6 +1,5 @@
 package com.example.feature.auth.sign_up.input_email.store
 
-import android.util.Patterns
 import com.arkivanov.mvikotlin.core.store.Store
 import com.arkivanov.mvikotlin.core.store.StoreFactory
 import com.arkivanov.mvikotlin.extensions.coroutines.coroutineExecutorFactory
@@ -9,6 +8,7 @@ import com.example.data.user.api.model.UserData
 import com.example.feature.auth.sign_up.input_email.store.InputEmailStore.Intent
 import com.example.feature.auth.sign_up.input_email.store.InputEmailStore.Label
 import com.example.feature.auth.sign_up.input_email.store.InputEmailStore.State
+import com.example.feature.auth.sign_up.input_email.util.InputEmailValidator
 import com.example.feature.auth.sign_up.input_email.util.InputEmailValidation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -34,7 +34,7 @@ class InputEmailStoreFactory(
                     onIntent<Intent.OnEmailChange> { dispatch(Msg.OnEmailChange(it.email)) }
                     onIntent<Intent.OnUsernameChange> { dispatch(Msg.OnUsernameChange(it.username)) }
                     onIntent<Intent.NavigateNext> {
-                        validateUserData(state().email, state().username)
+                        InputEmailValidator.validate(state().email, state().username)
                             .let { dispatch(Msg.UpdateValidation(it)) }
                         if (state().validation != InputEmailValidation.Valid) return@onIntent
                         launch {
@@ -60,17 +60,6 @@ class InputEmailStoreFactory(
                     }
                 }
             ) {}
-
-    private fun validateUserData(email: String, username: String): InputEmailValidation =
-        when {
-            email.isBlank() && username.isBlank() -> InputEmailValidation.EmptyAllFields
-            email.isBlank() -> InputEmailValidation.EmptyEmail
-            username.isBlank() -> InputEmailValidation.EmptyUsername
-            !Patterns.EMAIL_ADDRESS.matcher(email)
-                .matches() -> InputEmailValidation.InvalidEmailFormat
-
-            else -> InputEmailValidation.Valid
-        }
 
     private suspend fun checkFieldsExists(email: String, username: String): InputEmailValidation =
         withContext(Dispatchers.IO) {

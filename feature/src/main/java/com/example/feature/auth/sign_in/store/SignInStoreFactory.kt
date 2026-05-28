@@ -11,6 +11,7 @@ import com.example.data.user.api.UserRepository
 import com.example.feature.auth.sign_in.store.SignInStore.Intent
 import com.example.feature.auth.sign_in.store.SignInStore.Label
 import com.example.feature.auth.sign_in.store.SignInStore.State
+import com.example.feature.auth.sign_in.util.SignInInputValidator
 import com.example.feature.auth.sign_in.util.SignInValidation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -61,7 +62,7 @@ class SignInStoreFactory(
             ) {}
 
     private fun CoroutineExecutorScope<State, Msg, Nothing, Nothing>.signIn() {
-        validateInput(state().email, state().password)
+        SignInInputValidator.validate(state().email, state().password)
             .let {
                 dispatch(Msg.UpdateValidation(it))
                 if (it !is SignInValidation.Valid) return
@@ -86,14 +87,6 @@ class SignInStoreFactory(
             }
         }
     }
-
-    private fun validateInput(email: String, password: String): SignInValidation =
-        when {
-            email.isEmpty() && password.isEmpty() -> SignInValidation.EmptyAllFields
-            email.isEmpty() -> SignInValidation.EmptyEmail
-            password.isEmpty() -> SignInValidation.EmptyPassword
-            else -> SignInValidation.Valid
-        }
 
     private suspend fun saveUserData(userId: String) {
         val userData = userRepository.getUser(userId)
